@@ -2,7 +2,7 @@ packages:
   - packages/*
   - template
 
-# template depends on "kiln-cms": "^0.2.0" so it can be copied out of this repo as it is.
+# template depends on "kiln-cms": "^0.3.0" so it can be copied out of this repo as it is.
 # Inside the repo that version resolves to packages/kiln-cms.
 linkWorkspacePackages: true
 
@@ -10,3 +10,8 @@ allowBuilds:
   esbuild: true
   workerd: true
   sharp: false
+
+# drizzle-kit still pulls the deprecated @esbuild-kit loader, pinned to esbuild 0.18 (GHSA-67mh-4wv8-2f99).
+# It runs with the esbuild drizzle-kit itself uses.
+overrides:
+  "@esbuild-kit/core-utils>esbuild": "0.25.12"
