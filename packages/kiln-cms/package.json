@@ -39,7 +39,7 @@
     }
   },
   "bin": {
-    "kiln": "./bin/kiln.mjs"
+    "kiln": "bin/kiln.mjs"
   },
   "files": [
     "dist",

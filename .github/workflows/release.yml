@@ -30,5 +30,6 @@ jobs:
         run: test "v$(node -p "require('./packages/kiln-cms/package.json').version")" = "${GITHUB_REF_NAME}"
       # Lint, build the package, typecheck it, then run the template's checks and tests.
       - run: pnpm check
-      - run: npm publish
+      # verbose: prints the reason when the OIDC token exchange with npm fails.
+      - run: npm publish --loglevel verbose
         working-directory: packages/kiln-cms
