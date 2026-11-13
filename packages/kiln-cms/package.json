@@ -9,6 +9,14 @@
     "url": "git+https://github.com/mtri-git/kiln-cms.git",
     "directory": "packages/kiln-cms"
   },
+  "homepage": "https://github.com/mtri-git/kiln-cms#readme",
+  "bugs": {
+    "url": "https://github.com/mtri-git/kiln-cms/issues"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",

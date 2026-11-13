@@ -1,0 +1,34 @@
+name: release
+
+# Publishes packages/kiln-cms to npm through Trusted Publishing (OIDC): no token is stored.
+# The package's npm settings must list this repo and this workflow file as a trusted publisher.
+# To release: set the version in packages/kiln-cms/package.json, commit, then push the tag v<version>.
+on:
+  push:
+    tags: ["v*"]
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12
+      # Node 24 ships npm 11, which has OIDC trusted publishing (npm >= 11.5.1).
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          registry-url: https://registry.npmjs.org
+      - run: pnpm install --frozen-lockfile
+      - name: Tag matches package.json
+        run: test "v$(node -p "require('./packages/kiln-cms/package.json').version")" = "${GITHUB_REF_NAME}"
+      # Lint, build the package, typecheck it, then run the template's checks and tests.
+      - run: pnpm check
+      - run: npm publish
+        working-directory: packages/kiln-cms
