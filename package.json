@@ -1,0 +1,16 @@
+{
+  "name": "kiln-cms-workspace",
+  "private": true,
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "build": "pnpm --filter kiln-cms build",
+    "dev": "pnpm build && pnpm --filter kiln-app dev",
+    "lint": "biome check",
+    "lint:fix": "biome check --write",
+    "check": "pnpm lint && pnpm build && pnpm --filter kiln-cms typecheck && pnpm --filter kiln-app check"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.6"
+  }
+}

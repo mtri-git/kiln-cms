@@ -1,0 +1,57 @@
+{
+  "name": "kiln-cms",
+  "version": "0.1.0",
+  "description": "A headless CMS core for Cloudflare Workers: Hono, D1 (Drizzle) and R2.",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mtri-git/kiln-cms.git",
+    "directory": "packages/kiln-cms"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./schema": {
+      "types": "./dist/schema.d.ts",
+      "default": "./dist/schema.js"
+    }
+  },
+  "bin": {
+    "kiln": "./bin/kiln.mjs"
+  },
+  "files": [
+    "dist",
+    "bin",
+    "scripts"
+  ],
+  "engines": {
+    "node": ">=22.12"
+  },
+  "scripts": {
+    "build": "tsup",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@scalar/hono-api-reference": "^0.9.30",
+    "bcryptjs": "^3.0.2",
+    "nanoid": "^5.1.6"
+  },
+  "peerDependencies": {
+    "@hono/zod-openapi": "^1.2.0",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.12.8",
+    "zod": "^4.2.1"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20260601.0",
+    "@hono/zod-openapi": "^1.2.0",
+    "drizzle-orm": "^0.45.1",
+    "hono": "^4.12.8",
+    "tsup": "^8.5.0",
+    "typescript": "^5.9.3",
+    "zod": "^4.2.1"
+  }
+}
