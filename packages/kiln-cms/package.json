@@ -1,6 +1,6 @@
 {
   "name": "kiln-cms",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "description": "A headless CMS core for Cloudflare Workers: Hono, D1 (Drizzle) and R2.",
   "keywords": [
     "cms",

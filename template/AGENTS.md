@@ -54,6 +54,8 @@ Schema files import `baseColumns` and `seoColumns` from `'kiln-cms/schema'`.
 
 The package mounts `/auth/*`, `/admin/users`, `/health`, `/openapi.json` and `/docs`. To change how they
 behave, change the `kiln-cms` package, not this app.
+`createWorker` has two options for apps that need them: `basePath` (prefix for those routes) and
+`builtInAuth: false` (no `/auth` and `/admin/users`, the app signs users in itself).
 
 ## Module shape
 

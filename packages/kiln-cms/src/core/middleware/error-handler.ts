@@ -14,10 +14,18 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
 
   if (err instanceof ApiError) return fail(err.statusCode, err.code, err.message, err.details)
   if (err instanceof HTTPException) return fail(err.status, 'HTTP_ERROR', err.message)
+  // A write that lost a race with another one, or a service that did not check first: a client error, not a 500.
+  if (isUniqueViolation(err)) return fail(409, 'CONFLICT', 'A record with the same unique value already exists')
 
   logger.error(
     { type: 'error', requestId, method: c.req.method, path: c.req.path, name: err.name, stack: err.stack },
     err.message,
   )
   return fail(500, 'INTERNAL_ERROR', isProduction() ? 'Internal server error' : err.message)
+}
+
+/** D1 reports a broken UNIQUE constraint as text, on the error or on its `cause` (Drizzle wraps it). */
+function isUniqueViolation(err: unknown): boolean {
+  const cause = (err as { cause?: unknown })?.cause
+  return /UNIQUE constraint failed/i.test(`${String(err)} ${cause === undefined ? '' : String(cause)}`)
 }

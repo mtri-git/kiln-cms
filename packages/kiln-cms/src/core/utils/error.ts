@@ -29,8 +29,8 @@ export const Errors = {
   UNAUTHORIZED: () => new ApiError('UNAUTHORIZED', 'Unauthorized access', 401),
   FORBIDDEN: () => new ApiError('FORBIDDEN', 'Access forbidden', 403),
   NOT_FOUND: (resource: string) => new ApiError('NOT_FOUND', `${resource} not found`, 404),
-  CONFLICT: (message: string) => new ApiError('CONFLICT', message, 409),
-  BAD_REQUEST: (message: string) => new ApiError('BAD_REQUEST', message, 400),
+  CONFLICT: (message: string, details?: unknown) => new ApiError('CONFLICT', message, 409, details),
+  BAD_REQUEST: (message: string, details?: unknown) => new ApiError('BAD_REQUEST', message, 400, details),
   INVALID_INPUT: (message: string, details?: unknown) => new ApiError('INVALID_INPUT', message, 400, details),
   INTERNAL_ERROR: (message = 'Internal server error', details?: unknown) =>
     new ApiError('INTERNAL_ERROR', message, 500, details),

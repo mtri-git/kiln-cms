@@ -41,7 +41,39 @@ The Worker needs these bindings in `wrangler.jsonc`:
 
 The package's tables (`users`, `sessions`, `rate_limits`) are exported from `kiln-cms/schema`. Re-export them from your Drizzle schema so `drizzle-kit generate` creates their migrations.
 
-`kiln-cms` mounts `/auth`, `/admin/users`, `/docs` and `/openapi.json` for you.
+`kiln-cms` mounts `/health`, `/auth`, `/admin/users`, `/docs` and `/openapi.json` for you.
+
+## Options of `createWorker`
+
+| Option           | Default        | What it does                                                                                              |
+| ---------------- | -------------- | --------------------------------------------------------------------------------------------------------- |
+| `registerRoutes` | required       | Mounts your routers on the app                                                                            |
+| `registerHooks`  | none           | Registers change hooks with `onChange`                                                                    |
+| `title`          | `Kiln CMS API` | Title shown in `/openapi.json` and `/docs`                                                                |
+| `version`        | `0.1.0`        | Version shown in `/openapi.json` and `/docs`                                                              |
+| `basePath`       | none           | Prefix for the routes `kiln-cms` mounts itself. `'/api'` gives `/api/health`, `/api/auth`, `/api/docs`... |
+| `builtInAuth`    | `true`         | `false` leaves out `/auth` and `/admin/users`                                                             |
+
+Use `basePath` when the Worker only receives part of a domain (a route such as `example.com/api/*`). Your own routes are not moved: `registerRoutes` decides where they go.
+
+Use `builtInAuth: false` when your users sign in somewhere else, for example behind Cloudflare Access. Write your own `requireAuth` middleware; it must call `c.set('user', { userId, email, role })`. The `users`, `sessions` and `rate_limits` tables and the `JWT_SECRET` secret are then not needed.
+
+## Your own bindings
+
+`getEnv()` returns the bindings of the current request. Give it your own type when you have bindings `kiln-cms` does not know, such as an R2 bucket under another name than `BUCKET`:
+
+```ts
+type MyEnv = { DB: D1Database; MEDIA: R2Bucket; SITE_URL: string }
+
+const bucket = getEnv<MyEnv>().MEDIA
+onChange<MyEnv>(async (event, env) => {
+  await fetch(`${env.SITE_URL}/revalidate`, { method: 'POST', body: JSON.stringify(event) })
+})
+```
+
+## Errors
+
+Throw `Errors.NOT_FOUND('Post')`, `Errors.CONFLICT('Slug already exists', { field: 'slug' })`... and the error handler answers `{ success: false, error: { code, message, details }, requestId }`. The optional second argument of `CONFLICT`, `BAD_REQUEST` and `INVALID_INPUT` goes into `details`. A write that breaks a UNIQUE constraint answers 409 `CONFLICT` instead of 500.
 
 ## Command-line tool
 

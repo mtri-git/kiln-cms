@@ -2,7 +2,7 @@ packages:
   - packages/*
   - template
 
-# template depends on "kiln-cms": "^0.1.0" so it can be copied out of this repo as it is.
+# template depends on "kiln-cms": "^0.2.0" so it can be copied out of this repo as it is.
 # Inside the repo that version resolves to packages/kiln-cms.
 linkWorkspacePackages: true
 

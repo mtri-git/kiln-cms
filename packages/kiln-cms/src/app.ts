@@ -14,6 +14,18 @@ export type KilnOptions = {
   /** Title and version shown in `/openapi.json` and `/docs`. */
   title?: string
   version?: string
+  /**
+   * Prefix for the routes kiln-cms mounts itself (`/health`, `/auth`, `/admin/users`, `/openapi.json`, `/docs`),
+   * for a Worker that only receives part of a domain: `basePath: '/api'` gives `/api/health`, `/api/auth`...
+   * The app's own routes are not moved: `registerRoutes` decides where they go.
+   */
+  basePath?: string
+  /**
+   * `false` leaves out `/auth` and `/admin/users`, for an app whose users are signed in somewhere else
+   * (Cloudflare Access, another identity provider). The app then writes its own `requireAuth` middleware,
+   * which must call `c.set('user', { userId, email, role })`. `JWT_SECRET` is not needed in that case.
+   */
+  builtInAuth?: boolean
   /** Mounts the app's own routers. `/auth` and `/admin/users` are already mounted. */
   registerRoutes: (app: OpenAPIHono<AppEnv>) => void
   /** Registers change hooks with `onChange`. */
@@ -23,6 +35,7 @@ export type KilnOptions = {
 /** The Hono app: middleware, error handler, the built-in auth and users routes, then the app's routes. */
 export function createApp(options: KilnOptions): OpenAPIHono<AppEnv> {
   const app = createRouter()
+  const base = normalizeBasePath(options.basePath)
 
   app.use(requestIdMiddleware)
   app.use(requestLoggerMiddleware)
@@ -34,7 +47,7 @@ export function createApp(options: KilnOptions): OpenAPIHono<AppEnv> {
         if (allowed.includes('*')) return origin || '*'
         return allowed.includes(origin) ? origin : null
       },
-      allowMethods: ['GET', 'POST', 'PATCH', 'DELETE', 'OPTIONS'],
+      allowMethods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowHeaders: ['Content-Type', 'Authorization'],
       exposeHeaders: ['X-Request-ID'],
       maxAge: 86400,
@@ -53,19 +66,27 @@ export function createApp(options: KilnOptions): OpenAPIHono<AppEnv> {
     ),
   )
 
-  app.get('/health', (c) => c.json({ status: 'ok' as const }))
+  app.get(`${base}/health`, (c) => c.json({ status: 'ok' as const }))
 
-  app.route('/auth', authRouter)
-  app.route('/admin/users', usersAdminRouter)
+  if (options.builtInAuth !== false) {
+    app.route(`${base}/auth`, authRouter)
+    app.route(`${base}/admin/users`, usersAdminRouter)
+  }
   options.registerRoutes(app)
   options.registerHooks?.()
 
   app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', { type: 'http', scheme: 'bearer' })
-  app.doc31('/openapi.json', {
+  app.doc31(`${base}/openapi.json`, {
     openapi: '3.1.0',
     info: { title: options.title ?? 'Kiln CMS API', version: options.version ?? '0.1.0' },
   })
-  app.get('/docs', Scalar({ url: '/openapi.json' }))
+  app.get(`${base}/docs`, Scalar({ url: `${base}/openapi.json` }))
 
   return app
+}
+
+/** `'api'`, `'/api/'` and `'/api'` all become `'/api'`; nothing or `'/'` becomes `''`. */
+function normalizeBasePath(basePath: string | undefined): string {
+  const trimmed = (basePath ?? '').replace(/^\/+|\/+$/g, '')
+  return trimmed ? `/${trimmed}` : ''
 }
