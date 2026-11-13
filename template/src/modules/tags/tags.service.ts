@@ -1,5 +1,5 @@
-import { and, asc, count, eq, ne } from 'drizzle-orm'
-import { db, Errors, emitChange, getPaginationParams, notDeleted, releasedValue } from 'kiln-cms'
+import { and, asc, eq, ne } from 'drizzle-orm'
+import { db, Errors, emitChange, findOne, listPage, releasedValue } from 'kiln-cms'
 import { type Tag, tags } from '../../db/schema'
 import type { CreateTagInput, ListTagsQuery, UpdateTagInput } from './tags.schemas'
 
@@ -13,34 +13,16 @@ async function assertSlugFree(slug: string, exceptId?: string): Promise<void> {
 }
 
 export const tagsService = {
-  async list(query: ListTagsQuery) {
-    const params = getPaginationParams(query)
-    const where = notDeleted(tags)
-    const [rows, [{ total }]] = await Promise.all([
-      db.select().from(tags).where(where).orderBy(asc(tags.name)).limit(params.limit).offset(params.offset),
-      db.select({ total: count() }).from(tags).where(where),
-    ])
-    return { rows, total, params }
+  list(query: ListTagsQuery) {
+    return listPage(tags, { orderBy: [asc(tags.name)], query })
   },
 
-  async getById(id: string): Promise<Tag> {
-    const [row] = await db
-      .select()
-      .from(tags)
-      .where(and(eq(tags.id, id), notDeleted(tags)))
-      .limit(1)
-    if (!row) throw Errors.NOT_FOUND('Tag')
-    return row
+  getById(id: string): Promise<Tag> {
+    return findOne(tags, eq(tags.id, id), 'Tag')
   },
 
-  async getBySlug(slug: string): Promise<Tag> {
-    const [row] = await db
-      .select()
-      .from(tags)
-      .where(and(eq(tags.slug, slug), notDeleted(tags)))
-      .limit(1)
-    if (!row) throw Errors.NOT_FOUND('Tag')
-    return row
+  getBySlug(slug: string): Promise<Tag> {
+    return findOne(tags, eq(tags.slug, slug), 'Tag')
   },
 
   async create(input: CreateTagInput): Promise<Tag> {

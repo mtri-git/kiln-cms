@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import worker from '../src/worker'
-import { api, env, resetDb, tokenFor } from './helpers'
+import { api, fetchApp, resetDb, storage, tokenFor } from './helpers'
 
 let token: string
 
@@ -20,8 +19,7 @@ async function upload(form: FormData, opts: { token?: string; path?: string; met
     headers,
     body: form,
   })
-  const ctx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext
-  const res = await worker.fetch(req, env, ctx)
+  const res = await fetchApp(req)
   const text = await res.text()
   const json = (res.headers.get('content-type') ?? '').includes('json') ? JSON.parse(text) : undefined
   return { status: res.status, json, res }
@@ -67,10 +65,7 @@ describe('upload', () => {
     expect(res.status).toBe(200)
     expect(res.res.headers.get('content-type')).toBe('image/png')
     expect(res.res.headers.get('cache-control')).toMatch(/max-age=31536000/)
-    const again = await worker.fetch(new Request(`http://localhost/files/${json.data.key}`), env, {
-      waitUntil() {},
-      passThroughOnException() {},
-    } as unknown as ExecutionContext)
+    const again = await fetchApp(new Request(`http://localhost/files/${json.data.key}`))
     expect(new Uint8Array(await again.arrayBuffer())).toEqual(PNG)
   })
 
@@ -180,6 +175,17 @@ describe('admin media', () => {
     expect((await api('/admin/media?search=zzz', { token })).json.data).toEqual([])
   })
 
+  it('treats % and _ in search literally', async () => {
+    await put('report_2026.png')
+    await put('report-2026.png')
+    const search = async (term: string) =>
+      (await api(`/admin/media?search=${encodeURIComponent(term)}`, { token })).json.data.map(
+        (m: { fileName: string }) => m.fileName,
+      )
+    expect(await search('_')).toEqual(['report_2026.png'])
+    expect(await search('%')).toEqual([])
+  })
+
   it('gets by id and 404s on unknown id', async () => {
     const id = (await put()).json.data.id
     const found = await api(`/admin/media/${id}`, { token })
@@ -205,7 +211,7 @@ describe('admin media', () => {
     expect(status).toBe(404)
   })
 
-  it('deletes the row and the R2 object', async () => {
+  it('deletes the row and the stored file', async () => {
     const { id, key } = (await put()).json.data
     expect((await api(`/files/${key}`)).status).toBe(200)
     const del = await api(`/admin/media/${id}`, { method: 'DELETE', token })
@@ -213,7 +219,7 @@ describe('admin media', () => {
     expect(del.json.data).toEqual({ id })
     expect((await api(`/admin/media/${id}`, { token })).status).toBe(404)
     expect((await api(`/files/${key}`)).status).toBe(404)
-    expect(await env.BUCKET.head(key)).toBeNull()
+    expect(await storage.get(key)).toBeNull()
     expect((await api('/admin/media', { token })).json.data).toEqual([])
     expect((await api(`/admin/media/${id}`, { method: 'DELETE', token })).status).toBe(404)
   })

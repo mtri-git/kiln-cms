@@ -1,6 +1,6 @@
 # Call the API from a frontend
 
-For frontend authors. The API is a JSON API. Local base URL: `http://localhost:8787`. Production: the URL that `pnpm deploy` prints.
+For frontend authors. The API is a JSON API. Local base URL: `http://localhost:8787`. Production: the URL that `pnpm run deploy` prints (Cloudflare), or the address of your server (Node.js, Bun).
 
 ## Steps
 
@@ -93,7 +93,7 @@ For frontend authors. The API is a JSON API. Local base URL: `http://localhost:8
 
 ## Notes
 
-- Browser calls need the page's origin in `CORS_ALLOW_LIST` (`wrangler.jsonc`). The default is `*`.
+- Browser calls need the page's origin in `CORS_ALLOW_LIST` (`wrangler.jsonc` on Cloudflare, `.env` on Node.js and Bun). The default is `*`.
 - Dates in responses are ISO strings (`"2026-01-01T00:00:00.000Z"`).
 - Send the `requestId` from a failed response when you report a bug.
 - `/auth/setup`, `/auth/login` and `/auth/password` allow 10 requests per IP per 15 minutes. After that they answer 429 with `code: "TOO_MANY_REQUESTS"`; wait the number of seconds in the `Retry-After` header before trying again.

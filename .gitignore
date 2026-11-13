@@ -5,7 +5,12 @@ dist
 .dev.vars
 .env
 .env.*
+!.env.example
+data/
 *.log
 .DS_Store
 worker-configuration.d.ts
 .claude/
+
+# Local research notes, not committed
+research/

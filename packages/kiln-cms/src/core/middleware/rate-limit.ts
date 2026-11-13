@@ -3,21 +3,22 @@ import type { MiddlewareHandler } from 'hono'
 import { db } from '../../db'
 import { rateLimits } from '../../db/schema'
 import { AUTH_RATE_LIMIT } from '../constants'
+import { getStore } from '../request-context'
 import type { AppEnv } from '../types/env'
 import { Errors } from '../utils/error'
 
 type RateLimitOptions = { limit: number; windowMs: number }
 
 /**
- * Fixed-window limit per client IP, counted in D1. Every request counts, successful or not.
+ * Fixed-window limit per client IP, counted in the database. Every request counts, successful or not.
  * Routes that share a `name` share one counter. Over the limit: 429 with a `Retry-After` header.
  * Use in a route: `middleware: [rateLimit('auth')] as const`.
  */
 export const rateLimit =
   (name: string, { limit, windowMs }: RateLimitOptions = AUTH_RATE_LIMIT): MiddlewareHandler<AppEnv> =>
   async (c, next) => {
-    // Cloudflare sets CF-Connecting-IP and clients cannot override it. It is absent only in local dev and tests.
-    const key = `${name}:${c.req.header('CF-Connecting-IP') ?? 'unknown'}`
+    // The adapter knows the client IP (CF-Connecting-IP on Cloudflare, the socket or a proxy header on Node and Bun).
+    const key = `${name}:${getStore().clientIp ?? 'unknown'}`
     const now = Date.now()
     // One batch: drop every finished window (this key's included), then count this request.
     const [, [row]] = await db.batch([

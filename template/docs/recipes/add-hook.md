@@ -34,7 +34,7 @@ Handlers run after the response is sent. A handler that throws is logged (`type:
    }
    ```
 
-2. If the handler reads a new var or secret, add it to `wrangler.jsonc` (vars) or `wrangler secret put` (secrets), and declare it in a type of your own: `type MyEnv = WorkerEnv & { REVALIDATE_URL: string }`. Read it in the handler with `getEnv<MyEnv>()`.
+2. If the handler reads a new var or secret, add it to `wrangler.jsonc` (vars) or `wrangler secret put` (secrets) on Cloudflare, or to `.env` on Node.js and Bun, and declare it in a type of your own: `type MyEnv = KilnEnv & { REVALIDATE_URL: string }`. Read it in the handler with `getEnv<MyEnv>()`.
 
 3. To load the changed row, call its service inside the handler, for example `postsService.getById(event.id)`. A `deleted` event has no row left to load.
 
@@ -58,5 +58,5 @@ emitChange('authors', 'updated', id)
 ## Notes
 
 - Hooks run after the write. They cannot reject or change it: put validation in the service.
-- A handler has the time Cloudflare allows `waitUntil` work (about 30 seconds after the response). Keep it to one or two outbound calls.
+- On Cloudflare, a handler has the time `waitUntil` work is allowed (about 30 seconds after the response). On Node.js and Bun, the server waits for running handlers before it stops. Keep it to one or two outbound calls.
 - `users` and `auth` do not emit events.

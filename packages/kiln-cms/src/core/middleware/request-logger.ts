@@ -1,4 +1,5 @@
 import type { Context, Next } from 'hono'
+import { getStore } from '../request-context'
 import type { AppEnv } from '../types/env'
 import { logger } from '../utils/logger'
 
@@ -12,7 +13,7 @@ export const requestLoggerMiddleware = async (c: Context<AppEnv>, next: Next) =>
   const path = c.req.path
   const requestId = c.get('requestId')
   const userAgent = c.req.header('user-agent')
-  const ip = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || 'unknown'
+  const ip = getStore().clientIp ?? 'unknown'
 
   // Log incoming request
   logger.info(

@@ -1,6 +1,6 @@
-import { and, asc, count, desc, eq, getTableColumns, inArray, ne, notInArray, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, getTableColumns, inArray, ne, notInArray } from 'drizzle-orm'
 import type { BatchItem } from 'drizzle-orm/batch'
-import { db, Errors, emitChange, generateId, getPaginationParams, notDeleted, releasedValue } from 'kiln-cms'
+import { contains, db, Errors, emitChange, generateId, getPaginationParams, notDeleted, releasedValue } from 'kiln-cms'
 import { categories, type Post, posts, postTags, revisions, tags } from '../../db/schema'
 import type {
   CreatePostInput,
@@ -17,11 +17,6 @@ type Ref = { id: string; name: string; slug: string }
 type ListRow = Omit<Post, 'content' | 'deletedAt'>
 
 const { content: _content, deletedAt: _deletedAt, ...listColumns } = getTableColumns(posts)
-
-/** LIKE pattern matching `term` anywhere, with wildcards in `term` escaped. */
-const containsPattern = (term: string) => `%${term.replace(/[\\%_]/g, '\\$&')}%`
-
-const titleLike = (term: string) => sql`${posts.title} LIKE ${containsPattern(term)} ESCAPE '\\'`
 
 async function assertSlugFree(slug: string, exceptId?: string): Promise<void> {
   const [taken] = await db
@@ -162,7 +157,7 @@ export const postsService = {
           )
         : undefined,
       query.featured ? eq(posts.isFeatured, query.featured === 'true') : undefined,
-      query.search ? titleLike(query.search) : undefined,
+      query.search ? contains(posts.title, query.search) : undefined,
     )
     const [rows, [{ total }]] = await Promise.all([
       db
@@ -193,7 +188,7 @@ export const postsService = {
       notDeleted(posts),
       query.status ? eq(posts.status, query.status) : undefined,
       query.categoryId ? eq(posts.categoryId, query.categoryId) : undefined,
-      query.search ? titleLike(query.search) : undefined,
+      query.search ? contains(posts.title, query.search) : undefined,
     )
     const [rows, [{ total }]] = await Promise.all([
       db

@@ -1,6 +1,5 @@
-import { createWorker } from 'kiln-cms'
-import { registerHooks } from './hooks'
-import { registerRoutes } from './routes'
+import { createWorker } from 'kiln-cms/cloudflare'
+import { appOptions } from './app'
 
-// The Worker entry. Routes go in routes.ts, change hooks in hooks.ts.
-export default createWorker({ title: 'Kiln CMS API', version: '0.1.0', registerRoutes, registerHooks })
+// Cloudflare Workers entry: D1 for data, R2 for files. `pnpm dev`, `pnpm run deploy`.
+export default createWorker(appOptions)

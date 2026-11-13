@@ -1,8 +1,9 @@
 import bcrypt from 'bcryptjs'
-import { and, count, desc, eq, like, or } from 'drizzle-orm'
+import { and, count, desc, eq, or } from 'drizzle-orm'
 import { Errors } from '../../core/utils/error'
 import { getPaginationParams } from '../../core/utils/pagination'
 import { db } from '../../db'
+import { contains } from '../../db/queries'
 import { sessions, type User, users } from '../../db/schema'
 import { notDeleted, releasedValue } from '../../db/soft-delete'
 import type { CreateUserInput, ListUsersQuery, UpdateUserInput } from './users.schemas'
@@ -35,10 +36,9 @@ async function findById(id: string): Promise<User> {
 export const usersService = {
   async list(query: ListUsersQuery) {
     const params = getPaginationParams(query)
-    const term = query.search ? `%${query.search}%` : undefined
     const where = and(
       notDeleted(users),
-      term ? or(like(users.email, term), like(users.fullName, term)) : undefined,
+      query.search ? or(contains(users.email, query.search), contains(users.fullName, query.search)) : undefined,
       query.role ? eq(users.role, query.role) : undefined,
       query.isActive === undefined ? undefined : eq(users.isActive, query.isActive),
     )

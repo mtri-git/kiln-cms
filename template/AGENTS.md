@@ -1,6 +1,7 @@
 # Kiln CMS app
 
-A headless CMS API that runs entirely on Cloudflare: one Worker (Hono), D1 (Drizzle), R2 (files).
+A headless CMS API on Hono and Drizzle (SQLite). The same code runs on Cloudflare Workers (D1, R2), Node.js or
+Bun (a SQLite file, a folder for files).
 Frontends are separate projects that call this API. This file is the contract for anyone changing the code.
 
 The app is built on the `kiln-cms` package. The package holds the shared code (router helpers, responses,
@@ -9,21 +10,26 @@ modules, the route map, the hooks and the migrations. Upgrade the package with `
 
 ## Commands
 
-| Command                  | Use                                                                 |
-| ------------------------ | ------------------------------------------------------------------- |
-| `pnpm dev`               | Run locally at http://localhost:8787 (`/docs` shows the API)        |
-| `pnpm check`             | Typecheck + convention check + tests. Run before finishing any task |
-| `pnpm gen:module <name>` | Create a new module from the reference module                       |
-| `pnpm db:generate`       | Create a migration after changing `src/db/schema/`                  |
-| `pnpm db:migrate:local`  | Apply migrations to the local D1                                    |
+| Command                  | Use                                                                                  |
+| ------------------------ | ------------------------------------------------------------------------------------ |
+| `pnpm dev`               | Run locally on Cloudflare's runtime at http://localhost:8787 (`/docs` shows the API) |
+| `pnpm dev:node`          | Run locally on Node.js (`bun run dev:bun` for Bun)                                   |
+| `pnpm check`             | Typecheck + convention check + tests. Run before finishing any task                  |
+| `pnpm gen:module <name>` | Create a new module from the reference module                                        |
+| `pnpm db:generate`       | Create a migration after changing `src/db/schema/`                                   |
+| `pnpm db:migrate:local`  | Apply migrations to the local D1 (Node.js and Bun apply them at startup)             |
 
-First run: copy `.dev.vars.example` to `.dev.vars`, then `pnpm install` and `pnpm db:migrate:local`.
+First run on Cloudflare: copy `.dev.vars.example` to `.dev.vars`, then `pnpm install` and `pnpm db:migrate:local`.
+First run on Node.js or Bun: copy `.env.example` to `.env`, then `pnpm install`.
 
 ## Layout
 
 ```
 src/
-  worker.ts            Worker entry: createWorker({ registerRoutes, registerHooks }). Do not change
+  app.ts               The app: title, version, registerRoutes, registerHooks. Shared by every runtime
+  worker.ts            Cloudflare entry: createWorker(appOptions). Do not change
+  server.ts            Node.js entry: serve(appOptions). Do not change
+  server.bun.ts        Bun entry: serve(appOptions). Do not change
   routes.ts            Route map: one line per router
   hooks.ts             Change hooks: one onChange(...) per handler
   constants.ts         Shared constants of this app (POST_STATUSES...)
@@ -45,16 +51,17 @@ Import these from `'kiln-cms'`. Never import from a path inside the package, and
 | `ok`, `created`, `paginated`                                                  | Success responses                                    |
 | `Errors`                                                                      | `Errors.NOT_FOUND('X')`, `Errors.CONFLICT('...')`... |
 | `requireAuth`, `requireRole`, `currentUser`, `rateLimit`                      | Middleware                                           |
-| `db`, `notDeleted`, `releasedValue`, `getPaginationParams`, `generateId`      | Database access in services                          |
+| `db`, `findOne`, `listPage`, `contains`, `notDeleted`, `releasedValue`        | Database access in services (see Database below)     |
+| `getPaginationParams`, `generateId`                                           | Paging by hand, new ids                              |
 | `emitChange`, `onChange`                                                      | Change hooks                                         |
-| `getEnv`, `getFilesBaseUrl`, `WorkerEnv`, `AppEnv`                            | Bindings, vars and secrets                           |
+| `getEnv`, `getFilesBaseUrl`, `getStorage`, `KilnEnv`, `AppEnv`                | Vars, secrets, bindings and stored files             |
 | `users`, `sessions`, `rateLimits`, `usersService`, `userSchema`, `USER_ROLES` | The built-in users and their tables                  |
 
 Schema files import `baseColumns` and `seoColumns` from `'kiln-cms/schema'`.
 
 The package mounts `/auth/*`, `/admin/users`, `/health`, `/openapi.json` and `/docs`. To change how they
 behave, change the `kiln-cms` package, not this app.
-`createWorker` has two options for apps that need them: `basePath` (prefix for those routes) and
+The app options (`src/app.ts`) have two settings for apps that need them: `basePath` (prefix for those routes) and
 `builtInAuth: false` (no `/auth` and `/admin/users`, the app signs users in itself).
 
 ## Module shape
@@ -96,13 +103,16 @@ Database
 
 - Every table spreads `baseColumns` (id, createdAt, updatedAt, deletedAt). Content tables also spread `seoColumns`.
 - Rows are soft-deleted: set `deletedAt`, and every read filters with `notDeleted(table)`.
+- Read one row with `findOne(table, where, 'Name')` (404 when missing) and a page with `listPage(table, { where, orderBy, query })`. Both leave out soft-deleted rows. Write the query by hand when you need other columns or joins (see `posts`).
+- Search text with `contains(column, term)`, never `like(column, `%${term}%`)`: it makes `%` and `_` in the term match themselves.
 - When soft-deleting a row with a unique column, store `releasedValue(value, id)` in it.
 - Column names are snake_case in SQL and camelCase in TypeScript.
-- D1 has no interactive transactions: use `db.batch([...])` when several writes must succeed together.
+- No interactive transactions (D1 has none): use `db.batch([...])` when several writes must succeed together. It works on every runtime.
+- Never use a Cloudflare-only or Node-only API in `src/` outside the entries: files go through `getStorage()`, vars through `getEnv()`.
 - After changing a schema file: export it from `db/schema/index.ts`, then run `pnpm db:generate`.
 - `db/schema/index.ts` keeps the line `export * from 'kiln-cms/schema'`: it adds the package's tables to the migrations.
 - After `pnpm update kiln-cms`, run `pnpm db:generate`. It creates a migration when the package's tables changed.
-- Migrations only add. Never drop or rename a column that holds data.
+- Migrations only add. Never drop or rename a column that holds data. The one exception: removing a whole module on purpose ([remove a module](docs/recipes/remove-module.md)).
 
 Hooks
 
@@ -137,7 +147,7 @@ Provided by `kiln-cms`.
 | `posts`              | this app   | `status` is `draft` or `published`. `content` is an opaque JSON document from the editor; the API never inspects it |
 | `post_tags`          | this app   | Join table                                                                                                          |
 | `revisions`          | this app   | One snapshot per publish, newest 10 kept per post, restorable                                                       |
-| `media`              | this app   | Metadata for files stored in R2, served at `/files/<key>`                                                           |
+| `media`              | this app   | Metadata for stored files (R2 or a folder), served at `/files/<key>`                                                |
 
 ## Finishing a task
 

@@ -1,13 +1,17 @@
+<img src="site/logo.svg" alt="Kiln CMS logo" width="80">
+
 # Kiln CMS
 
-A headless CMS for Cloudflare: one Worker (Hono), D1 (Drizzle) for data and R2 for files. Frontends are separate projects that call the API.
+Guide: https://mtri-git.github.io/kiln-cms/
+
+A small headless CMS on Hono and Drizzle (SQLite). One app runs on Cloudflare Workers (D1 for data, R2 for files), Node.js or Bun (a SQLite file and a folder for files). Frontends are separate projects that call the API.
 
 Kiln has two parts:
 
-| Folder               | What it is                                                                                                                                           |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/kiln-cms/` | The `kiln-cms` npm package: router and response helpers, errors, middleware, change hooks, login (`auth`), `users`, and the `kiln` command-line tool |
-| `template/`          | A starter app built on the package: posts, categories, tags, media, the route map and the migrations. You copy this folder and make it your own      |
+| Folder               | What it is                                                                                                                                                    |
+| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/kiln-cms/` | The `kiln-cms` npm package: router and response helpers, errors, middleware, change hooks, login (`auth`), `users`, the adapters and the `kiln` CLI           |
+| `template/`          | A starter app built on the package: posts, categories, tags, media, the route map, the migrations and one entry per runtime. You copy it and make it your own |
 
 You edit the app freely. You upgrade the package with `pnpm update kiln-cms`.
 
@@ -36,7 +40,7 @@ pnpm check
 
 This runs the linter (Biome), builds the package, typechecks it, then runs the template's typecheck, convention check and tests. `pnpm lint:fix` formats the code.
 
-The tests for the package live in `template/test/`: they send real requests through the template's Worker.
+The tests for the package live in `template/test/`: they send real requests through the template's app, once on the Cloudflare adapter and once on the Node.js/Bun adapter.
 
 ## Scope
 
@@ -45,7 +49,7 @@ Kiln stays small on purpose. It does not have, and does not plan:
 - an admin UI (each site brings its own; the API is described at `/openapi.json`)
 - content types created at runtime (add a table with `pnpm gen:module`, then deploy)
 - runtime plugins (extend with modules and change hooks)
-- hosting outside Cloudflare
+- databases other than SQLite (D1 on Cloudflare, libSQL on Node.js and Bun)
 
 ## Docs
 

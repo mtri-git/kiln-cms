@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { api, env, resetDb } from './helpers'
+import { api, execute, resetDb } from './helpers'
 
 const ADMIN = { email: 'Admin@Example.com', password: 'correct-horse-1', fullName: 'Ada Admin' }
 
@@ -236,9 +236,7 @@ describe('rate limit', () => {
     for (let i = 0; i < 11; i++) await loginFrom('203.0.113.1', 'wrong-password')
     expect((await loginFrom('203.0.113.1', ADMIN.password)).status).toBe(429)
 
-    await env.DB.prepare('UPDATE rate_limits SET window_started_at = ?')
-      .bind(Date.now() - 16 * 60 * 1000)
-      .run()
+    await execute('UPDATE rate_limits SET window_started_at = ?', [Date.now() - 16 * 60 * 1000])
     expect((await loginFrom('203.0.113.1', ADMIN.password)).status).toBe(200)
   })
 })

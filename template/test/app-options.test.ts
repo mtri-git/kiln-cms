@@ -1,18 +1,17 @@
 import { sql } from 'drizzle-orm'
-import { type AppEnv, createRouter, createWorker, db, getEnv, type KilnOptions, ok } from 'kiln-cms'
+import { type AppEnv, createRouter, db, getEnv, type KilnOptions, ok } from 'kiln-cms'
 import { expect, it } from 'vitest'
-import { env } from './helpers'
+import { buildApp } from './helpers'
 
-// Options of createWorker that the template itself does not use: each test builds its own small Worker.
+// Options of the app that the template itself does not use: each test builds its own small Worker.
 
 type Routes = KilnOptions['registerRoutes']
 
 async function call(options: Partial<KilnOptions>, path: string, init?: RequestInit) {
-  const worker = createWorker({ registerRoutes: () => {}, ...options })
-  const ctx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext
-  const res = await worker.fetch(new Request(`http://localhost${path}`, init), env, ctx)
+  const app = buildApp({ registerRoutes: () => {}, ...options })
+  const res = await app(new Request(`http://localhost${path}`, init))
   const isJson = (res.headers.get('content-type') ?? '').includes('json')
-  return { status: res.status, json: isJson ? await res.json<any>() : undefined }
+  return { status: res.status, json: isJson ? ((await res.json()) as any) : undefined }
 }
 
 it('basePath moves the built-in routes and leaves the app routes where the app puts them', async () => {
@@ -65,8 +64,8 @@ it('an app can sign users in with its own middleware', async () => {
   expect(me.json.data.email).toBe('me@example.com')
 })
 
-it('getEnv reads bindings that WorkerEnv does not know', async () => {
-  type MyEnv = { MEDIA: R2Bucket; SITE_URL: string }
+it('getEnv reads vars that KilnEnv does not know', async () => {
+  type MyEnv = { SITE_URL: string }
   const registerRoutes: Routes = (app) => {
     app.get('/env', (c) => ok(c, { site: getEnv<MyEnv>().SITE_URL ?? null }))
   }
@@ -88,15 +87,12 @@ it('a broken UNIQUE constraint answers 409, not 500', async () => {
 })
 
 it('answers a CORS preflight for PUT', async () => {
-  const worker = createWorker({ registerRoutes: () => {} })
-  const ctx = { waitUntil() {}, passThroughOnException() {} } as unknown as ExecutionContext
-  const res = await worker.fetch(
+  const app = buildApp({ registerRoutes: () => {} })
+  const res = await app(
     new Request('http://localhost/health', {
       method: 'OPTIONS',
       headers: { Origin: 'http://localhost:5173', 'Access-Control-Request-Method': 'PUT' },
     }),
-    env,
-    ctx,
   )
   expect(res.headers.get('access-control-allow-methods')).toContain('PUT')
 })

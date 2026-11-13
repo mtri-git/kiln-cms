@@ -1,5 +1,5 @@
 import type { UserRole } from '../constants'
-import type { WorkerEnv } from '../request-context'
+import type { KilnEnv } from '../request-context'
 
 /** The signed-in user, set by `requireAuth`. */
 export type AuthUser = {
@@ -10,7 +10,7 @@ export type AuthUser = {
 
 /** Hono env for every router: `new OpenAPIHono<AppEnv>()`. */
 export type AppEnv = {
-  Bindings: WorkerEnv
+  Bindings: KilnEnv
   Variables: {
     requestId: string
     user?: AuthUser

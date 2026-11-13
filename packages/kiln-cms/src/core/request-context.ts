@@ -1,29 +1,45 @@
 import { AsyncLocalStorage } from 'node:async_hooks'
-import type { DrizzleD1Database } from 'drizzle-orm/d1'
-
-export type DbClient = DrizzleD1Database<Record<string, never>>
+import type { BatchItem, BatchResponse } from 'drizzle-orm/batch'
+import type { BaseSQLiteDatabase } from 'drizzle-orm/sqlite-core'
+import type { FileStorage } from './storage'
 
 /**
- * The bindings, vars and secrets of a kiln-cms app. kiln-cms itself reads `DB`, `NODE_ENV`, `CORS_ALLOW_LIST`,
- * `R2_PUBLIC_URL` and, for the built-in login, `JWT_SECRET`. An app with other bindings declares its own type
- * and reads them with `getEnv<MyEnv>()`; that type does not have to extend this one (an R2 bucket bound under
- * another name than `BUCKET`, no `JWT_SECRET` when `builtInAuth` is off).
+ * The Drizzle client of every adapter: D1 on Cloudflare, libSQL (a SQLite file) on Node and Bun.
+ * All of them are SQLite and all of them have `batch`, so services work the same everywhere.
  */
-export type WorkerEnv = {
-  DB: D1Database
-  BUCKET: R2Bucket
-  NODE_ENV: string
-  CORS_ALLOW_LIST: string
-  R2_PUBLIC_URL: string
+export type DbClient = BaseSQLiteDatabase<'async', unknown, Record<string, never>> & {
+  batch<U extends BatchItem<'sqlite'>, T extends Readonly<[U, ...U[]]>>(batch: T): Promise<BatchResponse<T>>
+}
+
+/**
+ * The vars and secrets kiln-cms itself reads, on every adapter. An app with more declares its own type and reads
+ * it with `getEnv<MyEnv>()`; that type does not have to extend this one (no `JWT_SECRET` when `builtInAuth` is off).
+ */
+export type KilnEnv = {
+  NODE_ENV?: string
+  /** Origins allowed to call the API from a browser, separated by `|`. `*` allows every origin. */
+  CORS_ALLOW_LIST?: string
+  /** Public base URL of the stored files. Empty serves them through the app at `/files/*`. */
+  FILES_PUBLIC_URL?: string
+  /** Older name of `FILES_PUBLIC_URL`, still read when `FILES_PUBLIC_URL` is not set. */
+  R2_PUBLIC_URL?: string
   JWT_SECRET: string
 }
 
-export type RequestStore = {
-  env: WorkerEnv
+/** What an adapter gives each request. */
+export type RuntimeContext = {
+  env: object
   db: DbClient
-  origin: string
-  /** Keeps the Worker alive for work that continues after the response (change hooks). */
+  storage: FileStorage
+  /** IP of the client, when the adapter knows it. Rate limits count per IP. */
+  clientIp?: string
+  /** Keeps work going after the response is sent (change hooks). */
   waitUntil: (promise: Promise<unknown>) => void
+}
+
+export type RequestStore = RuntimeContext & {
+  /** Origin of the current request (`https://cms.example.com`). */
+  origin: string
 }
 
 const als = new AsyncLocalStorage<RequestStore>()
@@ -34,10 +50,15 @@ export function runWithRequestContext<T>(store: RequestStore, fn: () => T): T {
 
 export function getStore(): RequestStore {
   const store = als.getStore()
-  if (!store) throw new Error('Request context is not available outside a Worker request')
+  if (!store) throw new Error('Request context is not available outside a request')
   return store
 }
 
-export function getEnv<Env extends object = WorkerEnv>(): Env {
-  return getStore().env as unknown as Env
+export function getEnv<Env extends object = KilnEnv>(): Env {
+  return getStore().env as Env
+}
+
+/** The file storage of the adapter: R2 on Cloudflare, a folder on Node and Bun. */
+export function getStorage(): FileStorage {
+  return getStore().storage
 }

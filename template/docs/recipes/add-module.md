@@ -1,7 +1,7 @@
 # Add a module
 
 Adds a new resource (a table, its Zod schemas, a service, public and admin routes). Example: `authors`.
-Read `AGENTS.md` first. The reference module is `src/modules/categories/`.
+Read `AGENTS.md` first. The reference module is `categories`: the generator uses the copy shipped in the `kiln-cms` package, so it works even if you changed or deleted `src/modules/categories/`.
 
 ## Steps
 
@@ -11,6 +11,8 @@ Read `AGENTS.md` first. The reference module is `src/modules/categories/`.
    pnpm gen:module authors
    # or, for irregular names:
    pnpm gen:module post-series post-series
+   # see what it would do first:
+   pnpm gen:module authors --dry-run
    ```
 
    This creates:
@@ -21,6 +23,7 @@ Read `AGENTS.md` first. The reference module is `src/modules/categories/`.
    src/modules/authors/authors.service.ts
    src/modules/authors/authors.home-routes.ts
    src/modules/authors/authors.admin-routes.ts
+   test/authors.test.ts
    ```
 
    It also adds one line to `src/db/schema/index.ts` and four lines to `src/routes.ts`. It refuses to run if the module or schema file already exists.
@@ -65,10 +68,10 @@ Read `AGENTS.md` first. The reference module is `src/modules/categories/`.
 
    ```sh
    pnpm db:generate
-   pnpm db:migrate:local
+   pnpm db:migrate:local   # Cloudflare. Node.js and Bun apply it when the server starts
    ```
 
-7. Add a test under `test/` for the new behaviour (AGENTS.md requires one).
+7. Update `test/authors.test.ts` to the new columns (it was generated from the categories test), and add cases for any new rule.
 
 8. Run the checks:
 

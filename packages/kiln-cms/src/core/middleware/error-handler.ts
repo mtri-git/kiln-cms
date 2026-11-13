@@ -24,7 +24,7 @@ export const errorHandler: ErrorHandler<AppEnv> = (err, c) => {
   return fail(500, 'INTERNAL_ERROR', isProduction() ? 'Internal server error' : err.message)
 }
 
-/** D1 reports a broken UNIQUE constraint as text, on the error or on its `cause` (Drizzle wraps it). */
+/** SQLite (D1, libSQL) reports a broken UNIQUE constraint as text, on the error or on its `cause` (Drizzle wraps it). */
 function isUniqueViolation(err: unknown): boolean {
   const cause = (err as { cause?: unknown })?.cause
   return /UNIQUE constraint failed/i.test(`${String(err)} ${cause === undefined ? '' : String(cause)}`)

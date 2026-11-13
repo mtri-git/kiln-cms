@@ -10,4 +10,4 @@ export const getCorsOrigins = (): string[] =>
 
 /** Base URL that uploaded files are served from, without a trailing slash. */
 export const getFilesBaseUrl = (): string =>
-  (getEnv().R2_PUBLIC_URL || `${getStore().origin}/files`).replace(/\/+$/, '')
+  (getEnv().FILES_PUBLIC_URL || getEnv().R2_PUBLIC_URL || `${getStore().origin}/files`).replace(/\/+$/, '')

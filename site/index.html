@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kiln CMS</title>
+<meta name="description" content="A small headless CMS on Hono and Drizzle (SQLite). Runs on Cloudflare Workers, Node.js or Bun.">
+<link rel="icon" href="logo.svg" type="image/svg+xml">
+<style>
+  :root {
+    --bg: #fffaf5;
+    --surface: #ffffff;
+    --text: #1c1917;
+    --muted: #57534e;
+    --border: #e7e5e4;
+    --accent: #c2410c;
+    --accent-soft: #ffedd5;
+    --code-bg: #f5f5f4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #141110;
+      --surface: #1c1917;
+      --text: #f5f5f4;
+      --muted: #a8a29e;
+      --border: #2e2a27;
+      --accent: #fb923c;
+      --accent-soft: #2a1a10;
+      --code-bg: #231f1d;
+    }
+  }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  }
+  a { color: var(--accent); }
+  code, pre { font-family: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; font-size: 0.9em; }
+  :not(pre) > code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+  pre {
+    background: var(--code-bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    line-height: 1.5;
+  }
+  header.top {
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .bar {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; color: var(--text); text-decoration: none; }
+  .brand img { width: 32px; height: 32px; }
+  .bar nav { margin-left: auto; display: flex; gap: 16px; font-size: 0.95em; }
+  .bar nav a { color: var(--muted); text-decoration: none; }
+  .bar nav a:hover { color: var(--accent); }
+  .hero {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 56px 16px 32px;
+    display: flex;
+    gap: 32px;
+    align-items: center;
+  }
+  .hero img { width: 120px; height: 120px; flex: none; }
+  .hero h1 { margin: 0 0 8px; font-size: 2.4em; line-height: 1.15; }
+  .hero p { margin: 0 0 16px; color: var(--muted); font-size: 1.1em; max-width: 640px; }
+  .hero pre { margin: 0; display: inline-block; }
+  .layout {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 0 16px 64px;
+    display: grid;
+    grid-template-columns: 200px minmax(0, 1fr);
+    gap: 40px;
+  }
+  .toc { position: sticky; top: 16px; align-self: start; font-size: 0.92em; }
+  .toc ol { list-style: none; margin: 0; padding: 0; border-left: 2px solid var(--border); }
+  .toc li a { display: block; padding: 4px 12px; color: var(--muted); text-decoration: none; }
+  .toc li a:hover { color: var(--accent); }
+  main section { padding-top: 8px; }
+  main h2 { margin: 40px 0 12px; font-size: 1.5em; scroll-margin-top: 16px; }
+  main section:first-child h2 { margin-top: 0; }
+  main h3 { margin: 24px 0 8px; font-size: 1.1em; }
+  table { border-collapse: collapse; width: 100%; font-size: 0.95em; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  .table-wrap { overflow-x: auto; }
+  .note {
+    background: var(--accent-soft);
+    border-left: 3px solid var(--accent);
+    padding: 10px 14px;
+    border-radius: 0 6px 6px 0;
+  }
+  .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; }
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 14px 16px;
+  }
+  .card strong { display: block; margin-bottom: 4px; }
+  .card span { color: var(--muted); font-size: 0.95em; }
+  footer { border-top: 1px solid var(--border); color: var(--muted); font-size: 0.9em; }
+  footer .bar { padding: 20px 16px; }
+  @media (max-width: 760px) {
+    .hero { flex-direction: column; align-items: flex-start; padding-top: 32px; gap: 16px; }
+    .hero img { width: 72px; height: 72px; }
+    .hero h1 { font-size: 1.9em; }
+    .hero pre { display: block; }
+    .layout { grid-template-columns: 1fr; gap: 0; }
+    .toc { display: none; }
+    .bar nav a.optional { display: none; }
+  }
+</style>
+</head>
+<body>
+<header class="top">
+  <div class="bar">
+    <a class="brand" href="./"><img src="logo.svg" alt="">Kiln CMS</a>
+    <nav>
+      <a class="optional" href="#quick-start">Guide</a>
+      <a href="https://www.npmjs.com/package/kiln-cms">npm</a>
+      <a href="https://github.com/mtri-git/kiln-cms">GitHub</a>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <img src="logo.svg" alt="Kiln CMS logo">
+  <div>
+    <h1>Kiln CMS</h1>
+    <p>A small headless CMS on Hono and Drizzle (SQLite). Write the app once, run it on Cloudflare Workers, Node.js or Bun. Your frontends are separate projects that call its JSON API.</p>
+    <pre><code>pnpm add kiln-cms</code></pre>
+  </div>
+</div>
+
+<div class="layout">
+  <aside class="toc">
+    <ol>
+      <li><a href="#how-it-works">How it works</a></li>
+      <li><a href="#runtimes">Runtimes</a></li>
+      <li><a href="#quick-start">Quick start</a></li>
+      <li><a href="#deploy">Deploy to Cloudflare</a></li>
+      <li><a href="#deploy-server">Deploy on a server</a></li>
+      <li><a href="#call-the-api">Call the API</a></li>
+      <li><a href="#extend">Extend</a></li>
+      <li><a href="#upgrade">Upgrade</a></li>
+      <li><a href="#scope">Scope</a></li>
+    </ol>
+  </aside>
+
+  <main>
+    <section id="how-it-works">
+      <h2>How it works</h2>
+      <p>Kiln has two parts:</p>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Part</th><th>What it is</th></tr>
+          <tr><td>The <code>kiln-cms</code> package</td><td>Router and response helpers, errors, middleware, change hooks, login (<code>/auth</code>), users and the <code>kiln</code> command-line tool. You upgrade it with <code>pnpm update kiln-cms</code>.</td></tr>
+          <tr><td>The app (<code>template/</code>)</td><td>A starter built on the package: posts, categories, tags, media, the route map, the migrations and one entry per runtime. You copy it and make it your own.</td></tr>
+        </table>
+      </div>
+      <h3>Routes</h3>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Prefix</th><th>Auth</th><th>Use for</th></tr>
+          <tr><td><code>/api/*</code></td><td>none</td><td>Public, read-only content</td></tr>
+          <tr><td><code>/admin/*</code></td><td><code>Authorization: Bearer &lt;accessToken&gt;</code></td><td>Create, update, delete</td></tr>
+          <tr><td><code>/auth/*</code></td><td>see <a href="#call-the-api">Call the API</a></td><td>Setup, login, refresh, logout, <code>me</code></td></tr>
+          <tr><td><code>/files/*</code></td><td>none</td><td>Files from R2, when the bucket has no public domain</td></tr>
+          <tr><td><code>/docs</code>, <code>/openapi.json</code></td><td>none</td><td>Interactive API reference and OpenAPI document</td></tr>
+        </table>
+      </div>
+    </section>
+
+    <section id="runtimes">
+      <h2>Runtimes</h2>
+      <p>The app lives in <code>src/app.ts</code>. A one-line entry per runtime picks where it runs. All three use SQLite, so the schema and the migrations are the same everywhere.</p>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Runtime</th><th>Entry</th><th>Data</th><th>Files</th></tr>
+          <tr><td>Cloudflare Workers</td><td><code>kiln-cms/cloudflare</code></td><td>D1</td><td>R2</td></tr>
+          <tr><td>Node.js 22.12+</td><td><code>kiln-cms/node</code></td><td>SQLite file (libSQL)</td><td>a folder</td></tr>
+          <tr><td>Bun</td><td><code>kiln-cms/bun</code></td><td>SQLite file (libSQL)</td><td>a folder</td></tr>
+        </table>
+      </div>
+<pre><code>// src/worker.ts (Cloudflare)
+import { createWorker } from 'kiln-cms/cloudflare'
+import { appOptions } from './app'
+export default createWorker(appOptions)
+
+// src/server.ts (Node.js) or src/server.bun.ts (Bun)
+import { serve } from 'kiln-cms/node' // or 'kiln-cms/bun'
+import { appOptions } from './app'
+await serve(appOptions)</code></pre>
+      <p>Code inside the app never touches a runtime API: files go through <code>getStorage()</code>, vars through <code>getEnv()</code>.</p>
+    </section>
+
+    <section id="quick-start">
+      <h2>Quick start</h2>
+      <p>You need Node.js and pnpm (or Bun). Copy the <a href="https://github.com/mtri-git/kiln-cms/tree/main/template"><code>template/</code></a> folder into a new repo, then run one of:</p>
+<pre><code># Cloudflare (local Workers runtime)
+cp .dev.vars.example .dev.vars
+pnpm install
+pnpm db:migrate:local
+pnpm dev
+
+# Node.js
+cp .env.example .env
+pnpm install
+pnpm dev:node
+
+# Bun
+cp .env.example .env
+bun install
+bun run dev:bun</code></pre>
+      <p>On Node.js and Bun the server applies the migrations at startup and keeps everything in <code>data/</code>.</p>
+      <p>The API runs at <code>http://localhost:8787</code>. Open <code>http://localhost:8787/docs</code> for the reference.</p>
+      <p>Create the first admin once, then log in:</p>
+<pre><code>curl -s -X POST http://localhost:8787/auth/setup \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"..."}'
+
+curl -s -X POST http://localhost:8787/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"..."}'</code></pre>
+    </section>
+
+    <section id="deploy">
+      <h2>Deploy to Cloudflare</h2>
+      <p>You need a Cloudflare account and <code>pnpm wrangler login</code>.</p>
+      <ol>
+        <li>Set the name of the Worker, the database and the bucket in <code>wrangler.jsonc</code> (default: <code>kiln-cms</code>).</li>
+        <li>Deploy. The first deploy creates the D1 database and the R2 bucket:
+<pre><code>pnpm run deploy</code></pre></li>
+        <li>Set the JWT secret (32 characters or more, random):
+<pre><code>pnpm wrangler secret put JWT_SECRET</code></pre></li>
+        <li>Create the tables. Run this again after every deploy that adds a migration:
+<pre><code>pnpm db:migrate:remote</code></pre></li>
+        <li>Create the first admin with <code>POST /auth/setup</code> on the deployed URL.</li>
+      </ol>
+      <p class="note">Do step 5 right away: <code>/auth/setup</code> is open until the first user exists.</p>
+      <h3>Settings</h3>
+      <p>In <code>wrangler.jsonc</code> under <code>vars</code>:</p>
+      <ul>
+        <li><code>CORS_ALLOW_LIST</code>: origins allowed to call the API from a browser, separated by <code>|</code>. The default <code>*</code> allows every origin; list your frontends in production.</li>
+        <li><code>FILES_PUBLIC_URL</code>: public base URL of the bucket (custom domain). Empty serves files through the Worker at <code>/files/*</code>.</li>
+      </ul>
+    </section>
+
+    <section id="deploy-server">
+      <h2>Deploy on a server (Node.js or Bun)</h2>
+      <ol>
+        <li>Copy the app to the server and install: <code>pnpm install</code> or <code>bun install</code>.</li>
+        <li>Create <code>.env</code> from <code>.env.example</code>: <code>NODE_ENV=production</code>, a random <code>JWT_SECRET</code> (32+ characters), <code>CORS_ALLOW_LIST</code>.</li>
+        <li>Start it with <code>pnpm start:node</code> or <code>bun run start:bun</code>, under systemd, pm2 or a container.</li>
+        <li>Create the first admin with <code>POST /auth/setup</code> right away.</li>
+      </ol>
+      <div class="table-wrap">
+        <table>
+          <tr><th>Env var</th><th>Default</th><th>What it does</th></tr>
+          <tr><td><code>PORT</code></td><td><code>8787</code></td><td>Port to listen on</td></tr>
+          <tr><td><code>DATABASE_URL</code></td><td><code>file:./data/kiln.db</code></td><td>libSQL URL (a Turso URL works too, with <code>DATABASE_AUTH_TOKEN</code>)</td></tr>
+          <tr><td><code>FILES_DIR</code></td><td><code>./data/files</code></td><td>Folder of the uploaded files</td></tr>
+          <tr><td><code>FILES_PUBLIC_URL</code></td><td>empty</td><td>Public base URL of the files; empty serves them at <code>/files/*</code></td></tr>
+          <tr><td><code>CLIENT_IP_HEADER</code></td><td>empty</td><td>Client IP header behind a proxy (<code>X-Forwarded-For</code>...), for the rate limits</td></tr>
+        </table>
+      </div>
+      <p class="note">SQLite is one file on one machine: run one server process, keep <code>data/</code> on a persistent disk and back it up.</p>
+    </section>
+
+    <section id="call-the-api">
+      <h2>Call the API</h2>
+      <p>Every response has <code>success</code> and <code>requestId</code>. Lists add <code>pagination</code>; errors carry an <code>error</code> object with a <code>code</code> to branch on.</p>
+<pre><code>{ "success": true, "data": [], "pagination": { "total": 42, "page": 1, "limit": 20, "totalPages": 3, "hasMore": true }, "requestId": "..." }
+{ "success": false, "error": { "code": "NOT_FOUND", "message": "Category not found" }, "requestId": "..." }</code></pre>
+      <ul>
+        <li>Page through lists with <code>?page=2&amp;limit=10</code>. <code>limit</code> defaults to 20, capped at 100.</li>
+        <li><code>POST /auth/login</code> returns <code>accessToken</code> (15 minutes) and <code>refreshToken</code>.</li>
+        <li><code>POST /auth/refresh</code> with <code>{ "refreshToken": "..." }</code> returns a new pair. The old refresh token stops working, so store the new one.</li>
+        <li><code>POST /auth/logout</code> with the refresh token ends that session.</li>
+      </ul>
+<pre><code>const BASE = 'https://cms.example.com'
+
+const res = await fetch(`${BASE}/admin/categories`, {
+  method: 'POST',
+  headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json' },
+  body: JSON.stringify({ name: 'News', slug: 'news' }),
+})
+const body = await res.json()
+if (!body.success) throw new Error(body.error.message)</code></pre>
+      <p>Full walkthrough: <a href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/call-the-api.md">Call the API</a>.</p>
+    </section>
+
+    <section id="extend">
+      <h2>Extend</h2>
+      <p>Content types are code: add a table, generate a migration, deploy.</p>
+<pre><code>pnpm gen:module products product
+pnpm db:generate
+pnpm db:migrate:local</code></pre>
+      <div class="cards">
+        <a class="card" href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-module.md"><strong>Add a module</strong><span>A new resource with public and admin routes.</span></a>
+        <a class="card" href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-field.md"><strong>Add a field</strong><span>A new column on an existing table.</span></a>
+        <a class="card" href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-endpoint.md"><strong>Add an endpoint</strong><span>A new route on an existing module.</span></a>
+        <a class="card" href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-hook.md"><strong>Add a change hook</strong><span>Purge a cache or call a webhook after content changes.</span></a>
+      </div>
+    </section>
+
+    <section id="upgrade">
+      <h2>Upgrade</h2>
+<pre><code>pnpm update kiln-cms
+pnpm db:generate
+pnpm check</code></pre>
+      <p><code>pnpm db:generate</code> creates a migration when the new version changed the package's tables (<code>users</code>, <code>sessions</code>, <code>rate_limits</code>). On Cloudflare apply it with <code>pnpm db:migrate:remote</code> after you deploy; Node.js and Bun apply it at the next start.</p>
+      <p>From 0.2: <code>createWorker</code> moved to <code>kiln-cms/cloudflare</code>, files go through <code>getStorage()</code> instead of <code>getEnv().BUCKET</code>, and <code>R2_PUBLIC_URL</code> is now <code>FILES_PUBLIC_URL</code> (the old name is still read).</p>
+    </section>
+
+    <section id="scope">
+      <h2>Scope</h2>
+      <p>Kiln stays small on purpose. It does not have, and does not plan:</p>
+      <ul>
+        <li>an admin UI (each site brings its own; the API is described at <code>/openapi.json</code>)</li>
+        <li>content types created at runtime</li>
+        <li>runtime plugins (extend with modules and change hooks)</li>
+        <li>databases other than SQLite</li>
+      </ul>
+    </section>
+  </main>
+</div>
+
+<footer>
+  <div class="bar">
+    <span>Kiln CMS · MIT License</span>
+    <nav>
+      <a href="https://github.com/mtri-git/kiln-cms">GitHub</a>
+      <a href="https://www.npmjs.com/package/kiln-cms">npm</a>
+    </nav>
+  </div>
+</footer>
+</body>
+</html>

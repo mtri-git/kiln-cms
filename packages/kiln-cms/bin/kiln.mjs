@@ -11,8 +11,8 @@ if (!command || !(command in commands)) {
   console.error(
     [
       'Usage: kiln <command>',
-      '  kiln gen:module <plural-name> [singular-name]   create a module from src/modules/categories',
-      '  kiln check                                      check the conventions in AGENTS.md',
+      '  kiln gen:module <plural-name> [singular-name] [--dry-run]   create a module and its test',
+      '  kiln check                                                  check the conventions in AGENTS.md',
     ].join('\n'),
   )
   process.exit(1)

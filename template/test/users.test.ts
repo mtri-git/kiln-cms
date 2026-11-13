@@ -46,6 +46,10 @@ describe('list users', () => {
     const byEmail = await api('/admin/users?search=bob@', { token })
     expect(byEmail.json.data.map((u: { email: string }) => u.email)).toEqual(['bob@example.com'])
 
+    // % and _ match themselves, not any text.
+    expect((await api(`/admin/users?search=${encodeURIComponent('%')}`, { token })).json.data).toEqual([])
+    expect((await api('/admin/users?search=_', { token })).json.data).toEqual([])
+
     const editors = await api('/admin/users?role=editor', { token })
     expect(editors.json.pagination.total).toBe(2)
     expect(editors.json.data.every((u: { role: string }) => u.role === 'editor')).toBe(true)

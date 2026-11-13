@@ -7,7 +7,7 @@ export const media = sqliteTable(
     ...baseColumns,
     /** Original file name as uploaded. */
     fileName: text('file_name').notNull(),
-    /** R2 object key. */
+    /** Key of the file in the storage (R2 on Cloudflare, a folder on Node and Bun). */
     key: text('key').notNull().unique(),
     contentType: text('content_type').notNull(),
     /** Size in bytes. */

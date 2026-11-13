@@ -1,4 +1,4 @@
-import { getStore, type WorkerEnv } from './request-context'
+import { getStore, type KilnEnv } from './request-context'
 import { logger } from './utils/logger'
 
 export type ChangeAction = 'created' | 'updated' | 'deleted' | 'published' | 'unpublished'
@@ -6,13 +6,13 @@ export type ChangeAction = 'created' | 'updated' | 'deleted' | 'published' | 'un
 /** One successful write. `resource` is the module name (`posts`, `categories`...), `id` the row id. */
 export type ChangeEvent = { resource: string; action: ChangeAction; id: string }
 
-/** `Env` is the app's own bindings type when it has bindings `WorkerEnv` does not list. */
-export type ChangeHandler<Env extends object = WorkerEnv> = (event: ChangeEvent, env: Env) => void | Promise<void>
+/** `Env` is the app's own bindings type when it has bindings `KilnEnv` does not list. */
+export type ChangeHandler<Env extends object = KilnEnv> = (event: ChangeEvent, env: Env) => void | Promise<void>
 
 const handlers = new Set<ChangeHandler<object>>()
 
 /** Registers a handler for every content change. Call it in `src/hooks.ts`. Returns a function that removes it. */
-export function onChange<Env extends object = WorkerEnv>(handler: ChangeHandler<Env>): () => void {
+export function onChange<Env extends object = KilnEnv>(handler: ChangeHandler<Env>): () => void {
   const registered = handler as ChangeHandler<object>
   handlers.add(registered)
   return () => {

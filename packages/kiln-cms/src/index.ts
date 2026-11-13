@@ -21,7 +21,16 @@ export {
   slugParam,
   timestamp,
 } from './core/openapi'
-export { type DbClient, getEnv, getStore, type RequestStore, type WorkerEnv } from './core/request-context'
+export {
+  type DbClient,
+  getEnv,
+  getStorage,
+  getStore,
+  type KilnEnv,
+  type RequestStore,
+  type RuntimeContext,
+} from './core/request-context'
+export type { FileStorage, StoredFile } from './core/storage'
 export type { AppEnv, AuthUser } from './core/types/env'
 export { ApiError, Errors } from './core/utils/error'
 export { generateId } from './core/utils/gen-id'
@@ -29,8 +38,9 @@ export { logger } from './core/utils/logger'
 export { getPaginationParams, type PaginationParams } from './core/utils/pagination'
 export { created, ok, paginated } from './core/utils/response'
 export { db } from './db'
+export { contains, findOne, type ListPageOptions, listPage } from './db/queries'
 export * from './db/schema'
 export { notDeleted, releasedValue } from './db/soft-delete'
+export { createHandler, type KilnHandler } from './handler'
 export { userSchema } from './modules/users/users.schemas'
 export { type PublicUser, usersService } from './modules/users/users.service'
-export { createWorker } from './worker'

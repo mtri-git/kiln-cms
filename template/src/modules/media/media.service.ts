@@ -1,14 +1,16 @@
-import { and, count, desc, eq, like } from 'drizzle-orm'
+import { desc, eq } from 'drizzle-orm'
 import {
+  contains,
   db,
   Errors,
   emitChange,
+  findOne,
   generateId,
-  getEnv,
   getFilesBaseUrl,
-  getPaginationParams,
-  notDeleted,
+  getStorage,
+  listPage,
   releasedValue,
+  type StoredFile,
 } from 'kiln-cms'
 import { type Media, media } from '../../db/schema'
 import {
@@ -41,23 +43,13 @@ function buildKey(fileName: string): string {
 
 export const mediaService = {
   async list(query: ListMediaQuery) {
-    const params = getPaginationParams(query)
-    const where = and(notDeleted(media), query.search ? like(media.fileName, `%${query.search}%`) : undefined)
-    const [rows, [{ total }]] = await Promise.all([
-      db.select().from(media).where(where).orderBy(desc(media.createdAt)).limit(params.limit).offset(params.offset),
-      db.select({ total: count() }).from(media).where(where),
-    ])
+    const where = query.search ? contains(media.fileName, query.search) : undefined
+    const { rows, total, params } = await listPage(media, { where, orderBy: [desc(media.createdAt)], query })
     return { rows: rows.map(toMedia), total, params }
   },
 
-  async getRow(id: string): Promise<Media> {
-    const [row] = await db
-      .select()
-      .from(media)
-      .where(and(eq(media.id, id), notDeleted(media)))
-      .limit(1)
-    if (!row) throw Errors.NOT_FOUND('Media')
-    return row
+  getRow(id: string): Promise<Media> {
+    return findOne(media, eq(media.id, id), 'Media')
   },
 
   async getById(id: string) {
@@ -72,8 +64,8 @@ export const mediaService = {
     }
 
     const key = buildKey(file.name)
-    const bucket = getEnv().BUCKET
-    await bucket.put(key, await file.arrayBuffer(), { httpMetadata: { contentType: file.type } })
+    const storage = getStorage()
+    await storage.put(key, await file.arrayBuffer(), { contentType: file.type })
     try {
       const [row] = await db
         .insert(media)
@@ -91,7 +83,7 @@ export const mediaService = {
       emitChange('media', 'created', row.id)
       return toMedia(row)
     } catch (error) {
-      await bucket.delete(key)
+      await storage.delete(key)
       throw error
     }
   },
@@ -110,12 +102,12 @@ export const mediaService = {
       .update(media)
       .set({ deletedAt: new Date(), key: releasedValue(row.key, row.id) })
       .where(eq(media.id, id))
-    await getEnv().BUCKET.delete(row.key)
+    await getStorage().delete(row.key)
     emitChange('media', 'deleted', id)
   },
 
-  /** The R2 object behind a public file URL. `encodedKey` is the percent-encoded path after `/files/`. */
-  async getFile(encodedKey: string): Promise<R2ObjectBody> {
+  /** The stored file behind a public file URL. `encodedKey` is the percent-encoded path after `/files/`. */
+  async getFile(encodedKey: string): Promise<StoredFile> {
     let key: string
     try {
       key = decodeURIComponent(encodedKey)
@@ -123,8 +115,8 @@ export const mediaService = {
       throw Errors.BAD_REQUEST('Invalid file key')
     }
     if (!key || key.includes('..')) throw Errors.BAD_REQUEST('Invalid file key')
-    const object = await getEnv().BUCKET.get(key)
-    if (!object) throw Errors.NOT_FOUND('File')
-    return object
+    const file = await getStorage().get(key)
+    if (!file) throw Errors.NOT_FOUND('File')
+    return file
   },
 }

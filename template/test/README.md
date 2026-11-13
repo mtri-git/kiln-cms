@@ -1,7 +1,12 @@
 # Tests
 
-`pnpm test` runs vitest in Node. Each test file gets its own in-memory D1 + R2 (wrangler `getPlatformProxy`,
-`persist: false`) and sends real `Request`s to the Worker's `fetch`. No dev server, no migrations.
+`pnpm test` runs vitest in Node, twice: once per adapter (two vitest projects, see `vitest.config.ts`).
+
+- `cloudflare`: each test file gets its own in-memory D1 + R2 (wrangler `getPlatformProxy`, `persist: false`).
+- `node`: each test file gets its own SQLite file (libSQL) and files folder in a temp dir. Bun uses the same code.
+
+Tests send real `Request`s through the app (`src/app.ts`). No dev server, no migrations. Run one adapter with
+`pnpm test --project node`.
 
 Tables are created from `src/db/schema/index.ts` (see `global-setup.ts`). Export a new table there and it
 exists in tests automatically.
@@ -12,6 +17,8 @@ exists in tests automatically.
   POST when `body` is given, else GET.
 - `tokenFor('admin' | 'editor', { userId?, email? })` returns a valid access token (no users table needed).
 - `resetDb()` empties every table. Call it in `beforeEach`.
+- `execute(sql, args?)` runs raw SQL and returns the rows. `storage` is the file storage under test.
+- `fetchApp(request)` sends any `Request` (a form upload...). `buildApp(options)` builds a one-off app.
 
 Envelope: success is `{ success: true, data, requestId }` (lists add `pagination`); errors are
 `{ success: false, error: { code, message, details? }, requestId }`.

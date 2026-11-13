@@ -1,5 +1,5 @@
-import { and, asc, count, eq, ne } from 'drizzle-orm'
-import { db, Errors, emitChange, getPaginationParams, notDeleted, releasedValue } from 'kiln-cms'
+import { and, asc, eq, ne } from 'drizzle-orm'
+import { db, Errors, emitChange, findOne, listPage, releasedValue } from 'kiln-cms'
 import { type Category, categories } from '../../db/schema'
 import type { CreateCategoryInput, ListCategoriesQuery, UpdateCategoryInput } from './categories.schemas'
 
@@ -13,40 +13,16 @@ async function assertSlugFree(slug: string, exceptId?: string): Promise<void> {
 }
 
 export const categoriesService = {
-  async list(query: ListCategoriesQuery) {
-    const params = getPaginationParams(query)
-    const where = notDeleted(categories)
-    const [rows, [{ total }]] = await Promise.all([
-      db
-        .select()
-        .from(categories)
-        .where(where)
-        .orderBy(asc(categories.order), asc(categories.name))
-        .limit(params.limit)
-        .offset(params.offset),
-      db.select({ total: count() }).from(categories).where(where),
-    ])
-    return { rows, total, params }
+  list(query: ListCategoriesQuery) {
+    return listPage(categories, { orderBy: [asc(categories.order), asc(categories.name)], query })
   },
 
-  async getById(id: string): Promise<Category> {
-    const [row] = await db
-      .select()
-      .from(categories)
-      .where(and(eq(categories.id, id), notDeleted(categories)))
-      .limit(1)
-    if (!row) throw Errors.NOT_FOUND('Category')
-    return row
+  getById(id: string): Promise<Category> {
+    return findOne(categories, eq(categories.id, id), 'Category')
   },
 
-  async getBySlug(slug: string): Promise<Category> {
-    const [row] = await db
-      .select()
-      .from(categories)
-      .where(and(eq(categories.slug, slug), notDeleted(categories)))
-      .limit(1)
-    if (!row) throw Errors.NOT_FOUND('Category')
-    return row
+  getBySlug(slug: string): Promise<Category> {
+    return findOne(categories, eq(categories.slug, slug), 'Category')
   },
 
   async create(input: CreateCategoryInput): Promise<Category> {
