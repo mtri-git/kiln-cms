@@ -13,9 +13,7 @@ You edit the app freely. You upgrade the package with `pnpm update kiln-cms`.
 
 ## Start a new site
 
-`kiln-cms` is not published to npm yet. Until it is, work inside this repo (see below).
-
-Once it is published: copy `template/` into a new repo, then follow [template/README.md](template/README.md).
+Copy `template/` into a new repo, then follow [template/README.md](template/README.md). It installs [`kiln-cms`](https://www.npmjs.com/package/kiln-cms) from npm.
 
 ## Work on Kiln itself
 
