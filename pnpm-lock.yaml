@@ -76,7 +76,7 @@ importers:
         specifier: ^4.12.8
         version: 4.13.18
       kiln-cms:
-        specifier: ^0.3.0
+        specifier: ^0.4.0
         version: link:../packages/kiln-cms
       zod:
         specifier: ^4.2.1

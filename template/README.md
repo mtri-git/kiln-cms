@@ -108,6 +108,7 @@ pnpm check
 - [Add a field](docs/recipes/add-field.md) to an existing table.
 - [Add an endpoint](docs/recipes/add-endpoint.md) to an existing module.
 - [Add a change hook](docs/recipes/add-hook.md) to run code after content changes (purge a cache, call a webhook).
+- [Send webhooks](docs/recipes/send-webhooks.md) to other services when content changes (settings only, signed).
 - [Call the API](docs/recipes/call-the-api.md) from a frontend.
 
 ## Before you finish

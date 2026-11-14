@@ -1,7 +1,7 @@
 # Add a change hook
 
 Runs your code after content changes: purge a cache, call a webhook, rebuild a static site.
-Read `AGENTS.md` first.
+Read `AGENTS.md` first. To only POST each change to a URL, use the built-in [webhooks](send-webhooks.md) instead.
 
 ## How it works
 

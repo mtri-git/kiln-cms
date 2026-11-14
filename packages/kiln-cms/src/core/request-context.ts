@@ -24,6 +24,12 @@ export type KilnEnv = {
   /** Older name of `FILES_PUBLIC_URL`, still read when `FILES_PUBLIC_URL` is not set. */
   R2_PUBLIC_URL?: string
   JWT_SECRET: string
+  /** URLs that receive a POST for every content change, separated by `|`. Empty sends no webhooks. */
+  WEBHOOK_URLS?: string
+  /** Key for the `X-Kiln-Signature` HMAC of each webhook. Empty sends them unsigned. */
+  WEBHOOK_SECRET?: string
+  /** Events to send, separated by `|`: `posts.published`, `posts.*`, `*.deleted`. Empty sends every event. */
+  WEBHOOK_EVENTS?: string
 }
 
 /** What an adapter gives each request. */

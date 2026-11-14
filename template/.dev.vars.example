@@ -1,2 +1,5 @@
 NODE_ENV=development
 JWT_SECRET=dev-jwt-secret-change-me-min-32-chars-xxxx
+# Webhooks (see docs/recipes/send-webhooks.md). Empty = none.
+WEBHOOK_URLS=
+WEBHOOK_SECRET=

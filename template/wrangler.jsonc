@@ -24,6 +24,11 @@
     // Origins allowed to call the API from a browser, separated by "|". "*" allows all.
     "CORS_ALLOW_LIST": "*",
     // Public base URL for uploaded files (a custom domain on the bucket). Empty = serve through this Worker at /files/*.
-    "FILES_PUBLIC_URL": ""
+    "FILES_PUBLIC_URL": "",
+    // Webhooks: URLs that get a POST for every content change, separated by "|". Empty = none.
+    // The signing key is a secret: `wrangler secret put WEBHOOK_SECRET`.
+    "WEBHOOK_URLS": "",
+    // Events to send, separated by "|": "posts.published", "posts.*", "*.deleted". Empty = all.
+    "WEBHOOK_EVENTS": ""
   }
 }

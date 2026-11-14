@@ -2,11 +2,13 @@ import type { OpenAPIHono } from '@hono/zod-openapi'
 import { Scalar } from '@scalar/hono-api-reference'
 import { cors } from 'hono/cors'
 import { getCorsOrigins } from './config/env'
+import { onChange } from './core/hooks'
 import { errorHandler } from './core/middleware/error-handler'
 import { requestIdMiddleware } from './core/middleware/request-id'
 import { requestLoggerMiddleware } from './core/middleware/request-logger'
 import { createRouter } from './core/openapi'
 import type { AppEnv } from './core/types/env'
+import { deliverWebhooks } from './core/webhooks'
 import { authRouter } from './modules/auth/auth.routes'
 import { usersAdminRouter } from './modules/users/users.admin-routes'
 
@@ -74,6 +76,8 @@ export function createApp(options: KilnOptions): OpenAPIHono<AppEnv> {
   }
   options.registerRoutes(app)
   options.registerHooks?.()
+  // Webhooks from WEBHOOK_URLS. The same function every time, so building the app twice registers it once.
+  onChange(deliverWebhooks)
 
   app.openAPIRegistry.registerComponent('securitySchemes', 'Bearer', { type: 'http', scheme: 'bearer' })
   app.doc31(`${base}/openapi.json`, {

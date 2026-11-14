@@ -159,6 +159,15 @@ onChange<MyEnv>(async (event, env) => {
 
 On Cloudflare, Worker bindings (`KVNamespace`, another R2 bucket...) are read the same way. On Node.js and Bun, `getEnv()` is `process.env`.
 
+## Webhooks
+
+Set `WEBHOOK_URLS` (URLs separated by `|`) and every content change is sent as a `POST` with a JSON body
+`{ event: 'posts.published', resource, action, id, occurredAt }`, after the response. `WEBHOOK_SECRET` signs each
+request: `X-Kiln-Signature: sha256=<hex HMAC-SHA256 of "<X-Kiln-Timestamp>.<body>">`. `WEBHOOK_EVENTS` keeps only some
+events (`posts.published|posts.*|*.deleted`). Failed deliveries (network, 408, 429, 5xx) are tried 3 times with the same
+`X-Kiln-Delivery` id. Receivers check a request with `verifyWebhook({ secret, body, timestamp, signature })`.
+See [send webhooks](https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/send-webhooks.md).
+
 ## Errors
 
 Throw `Errors.NOT_FOUND('Post')`, `Errors.CONFLICT('Slug already exists', { field: 'slug' })`... and the error handler answers `{ success: false, error: { code, message, details }, requestId }`. The optional second argument of `CONFLICT`, `BAD_REQUEST` and `INVALID_INPUT` goes into `details`. A write that breaks a UNIQUE constraint answers 409 `CONFLICT` instead of 500.

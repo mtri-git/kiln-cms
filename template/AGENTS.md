@@ -118,6 +118,7 @@ Hooks
 
 - A service calls `emitChange(resource, action, id)` after each successful write to content (`created`, `updated`, `deleted`, `published`, `unpublished`). `users` and `auth` do not emit.
 - Handlers are registered only in `src/hooks.ts`. They run after the response and cannot fail the request. See `docs/recipes/add-hook.md`.
+- Webhooks are built in: `WEBHOOK_URLS`, `WEBHOOK_SECRET` and `WEBHOOK_EVENTS` send each event as a signed POST. Do not write an `onChange` handler for a plain webhook. See `docs/recipes/send-webhooks.md`.
 
 Types
 
