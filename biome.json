@@ -11,6 +11,7 @@
       "arrowParentheses": "always"
     }
   },
+  "css": { "parser": { "tailwindDirectives": true } },
   "linter": {
     "rules": {
       "preset": "recommended",

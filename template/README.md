@@ -110,6 +110,7 @@ pnpm check
 - [Add a change hook](docs/recipes/add-hook.md) to run code after content changes (purge a cache, call a webhook).
 - [Send webhooks](docs/recipes/send-webhooks.md) to other services when content changes (settings only, signed).
 - [Call the API](docs/recipes/call-the-api.md) from a frontend.
+- [Add an admin UI](docs/recipes/add-admin-ui.md): `kiln-cms/admin` renders lists, forms, media library and a rich text editor for your modules.
 
 ## Before you finish
 

@@ -1,6 +1,6 @@
 {
   "name": "kiln-cms",
-  "version": "0.4.0",
+  "version": "0.5.0",
   "description": "A small headless CMS core on Hono and Drizzle (SQLite). Adapters for Cloudflare Workers (D1, R2), Node.js and Bun (SQLite file, local folder).",
   "keywords": [
     "cms",
@@ -52,7 +52,12 @@
     "./bun": {
       "types": "./dist/bun.d.ts",
       "default": "./dist/bun.js"
-    }
+    },
+    "./admin": {
+      "types": "./dist/admin.d.ts",
+      "default": "./dist/admin.js"
+    },
+    "./admin/styles.css": "./dist/admin.css"
   },
   "bin": {
     "kiln": "bin/kiln.mjs"
@@ -67,8 +72,10 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "build": "tsdown && node scripts/copy-reference.mjs",
-    "typecheck": "tsc --noEmit"
+    "build": "tsdown && node scripts/copy-reference.mjs && tailwindcss -i src/admin/styles.css -o dist/admin.css --minify",
+    "typecheck": "tsc --noEmit && tsc -p tsconfig.admin.json --noEmit",
+    "test": "vitest run",
+    "dev:admin": "vite --config playground/vite.config.ts"
   },
   "dependencies": {
     "@scalar/hono-api-reference": "^0.9.30",
@@ -76,31 +83,77 @@
     "nanoid": "^5.1.6"
   },
   "peerDependencies": {
+    "@base-ui/react": "^1.9.0",
     "@hono/node-server": "^2.1.7",
     "@hono/zod-openapi": "^1.2.0",
     "@libsql/client": "^0.18.0",
+    "@tanstack/react-query": "^5.0.0",
+    "cheese-editor": "^0.1.0",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.12.8",
+    "lowlight": "^3.0.0",
+    "lucide-react": "^1.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "zod": "^4.2.1"
   },
   "peerDependenciesMeta": {
+    "@base-ui/react": {
+      "optional": true
+    },
     "@hono/node-server": {
       "optional": true
     },
     "@libsql/client": {
       "optional": true
+    },
+    "@tanstack/react-query": {
+      "optional": true
+    },
+    "cheese-editor": {
+      "optional": true
+    },
+    "lowlight": {
+      "optional": true
+    },
+    "lucide-react": {
+      "optional": true
+    },
+    "react": {
+      "optional": true
+    },
+    "react-dom": {
+      "optional": true
     }
   },
   "devDependencies": {
+    "@base-ui/react": "^1.9.0",
     "@cloudflare/workers-types": "^4.20260601.0",
     "@hono/node-server": "^2.1.7",
     "@hono/zod-openapi": "^1.2.0",
     "@libsql/client": "^0.18.0",
+    "@tailwindcss/cli": "^4.3.5",
+    "@tailwindcss/vite": "^4.3.5",
+    "@tanstack/react-query": "^5.108.4",
+    "@testing-library/react": "^16.3.3",
+    "@tiptap/core": "^3.35.0",
     "@types/node": "^24.19.2",
+    "@types/react": "^19.2.0",
+    "@types/react-dom": "^19.2.0",
+    "@vitejs/plugin-react": "^6.3.0",
+    "cheese-editor": "^0.1.0",
     "drizzle-orm": "^0.45.1",
+    "happy-dom": "^20.0.0",
     "hono": "^4.12.8",
+    "lowlight": "^3.3.0",
+    "lucide-react": "^1.78.0",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.5",
     "tsdown": "^0.23.7",
     "typescript": "^5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^4.1.12",
     "zod": "^4.2.1"
   }
 }

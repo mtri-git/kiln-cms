@@ -8,10 +8,10 @@ A small headless CMS on Hono and Drizzle (SQLite). One app runs on Cloudflare Wo
 
 Kiln has two parts:
 
-| Folder               | What it is                                                                                                                                                    |
-| -------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `packages/kiln-cms/` | The `kiln-cms` npm package: router and response helpers, errors, middleware, change hooks, login (`auth`), `users`, the adapters and the `kiln` CLI           |
-| `template/`          | A starter app built on the package: posts, categories, tags, media, the route map, the migrations and one entry per runtime. You copy it and make it your own |
+| Folder               | What it is                                                                                                                                                                                   |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `packages/kiln-cms/` | The `kiln-cms` npm package: router and response helpers, errors, middleware, change hooks, login (`auth`), `users`, the adapters, the `kiln` CLI and an optional admin UI (`kiln-cms/admin`) |
+| `template/`          | A starter app built on the package: posts, categories, tags, media, the route map, the migrations and one entry per runtime. You copy it and make it your own                                |
 
 You edit the app freely. You upgrade the package with `pnpm update kiln-cms`.
 
@@ -46,7 +46,7 @@ The tests for the package live in `template/test/`: they send real requests thro
 
 Kiln stays small on purpose. It does not have, and does not plan:
 
-- an admin UI (each site brings its own; the API is described at `/openapi.json`)
+- an admin UI built into the API: `kiln-cms/admin` is a separate, optional entry that headless apps never load (see [Add an admin UI](template/docs/recipes/add-admin-ui.md)); the API stays headless and is described at `/openapi.json`
 - content types created at runtime (add a table with `pnpm gen:module`, then deploy)
 - runtime plugins (extend with modules and change hooks)
 - databases other than SQLite (D1 on Cloudflare, libSQL on Node.js and Bun)

@@ -183,6 +183,111 @@ Throw `Errors.NOT_FOUND('Post')`, `Errors.CONFLICT('Slug already exists', { fiel
 - Files go through `getStorage()` instead of `getEnv().BUCKET`. `getFile` returns `{ body, contentType, size, etag }`.
 - `R2_PUBLIC_URL` is now `FILES_PUBLIC_URL`. The old name is still read.
 
+## Admin UI (optional)
+
+`kiln-cms/admin` is a ready-made admin for the API your app already has. You describe your resources in code and it renders the sign-in page, the lists, the forms, the media library and a rich text editor. The server needs no change: it talks to `/auth` and `/admin/*`.
+
+It is a separate entry of this package. A headless app never imports it, so nothing of it reaches your Worker or server. Its libraries are optional peer dependencies, which you install only when you use it:
+
+```sh
+pnpm add react react-dom @base-ui/react @tanstack/react-query lucide-react cheese-editor lowlight
+```
+
+```tsx
+import { AdminApp, defineResource, usersResource } from 'kiln-cms/admin'
+import 'kiln-cms/admin/styles.css'
+import { createRoot } from 'react-dom/client'
+
+const posts = defineResource({
+  name: 'posts',
+  label: 'Posts',
+  path: '/admin/posts',
+  titleField: 'title',
+  columns: ['title', { name: 'status', type: 'badge' }, 'updatedAt'],
+  fields: [
+    { name: 'title', type: 'text', required: true },
+    { name: 'content', type: 'richtext', format: 'json' },
+    { name: 'slug', type: 'slug', from: 'title', required: true, position: 'sidebar' },
+    { name: 'coverImageUrl', label: 'Cover image', type: 'image', position: 'sidebar' },
+  ],
+  actions: [{ label: 'Publish', path: '/{id}/publish', when: (post) => post.status !== 'published' }],
+})
+
+createRoot(document.getElementById('root')!).render(
+  <AdminApp apiUrl="https://api.example.com" resources={[posts, usersResource]} />,
+)
+```
+
+The admin is a single-page app with hash routes (`#/posts/123`): it works on any static host. It needs React 19. Step by step, see [Add an admin UI](https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-admin-ui.md).
+
+### Resources
+
+| Key                      | Meaning                                                                                  |
+| ------------------------ | ---------------------------------------------------------------------------------------- |
+| `name`, `label`, `group` | URL segment, menu text, menu heading                                                     |
+| `path`                   | API path of the admin routes, e.g. `/admin/posts`                                        |
+| `titleField`             | Field that names a record (page title, relation options)                                 |
+| `columns`                | Names, or `{ name, label, type, render }`. `name` can be a path: `category.name`         |
+| `filters`                | `{ name, label, options }`: sent as a query parameter to the list endpoint               |
+| `actions`                | Buttons that call `POST {path}/{id}/...`, e.g. publish. Disabled while the form is dirty |
+| `fields`                 | See below                                                                                |
+| `canCreate`, `canDelete` | `false` hides the button                                                                 |
+
+| Field `type` | Stores                        | Options                                                                    |
+| ------------ | ----------------------------- | -------------------------------------------------------------------------- |
+| `text`       | string                        | `inputType` (`text`, `email`, `password`, `url`), `maxLength`              |
+| `textarea`   | string                        | `rows`, `maxLength`                                                        |
+| `number`     | number                        | `integer`                                                                  |
+| `boolean`    | boolean                       |                                                                            |
+| `select`     | string                        | `options: [{ value, label }]`                                              |
+| `slug`       | string                        | `from`: the field it follows until you edit it. Strips accents (`đ` → `d`) |
+| `image`      | URL string                    | Picks from the media library                                               |
+| `richtext`   | JSON object or HTML string    | `format: 'json'` (default) or `'html'`                                     |
+| `relation`   | id, or `id[]` with `multiple` | `resource`: the `name` of another resource                                 |
+
+Every field also takes `label`, `description`, `placeholder`, `required`, `position` (`main` or `sidebar`), `mode` (`create` or `edit` only), `readOnly`, `readOnlyOnEdit`, `omitIfEmpty` and `read(record)` (when the form value is not `record[name]`, e.g. `tagIds` from `record.tags`).
+
+### Rich text
+
+A `richtext` field uses [cheese-editor](https://github.com/mtri-git/cheese-editor): a toolbar, a slash menu (type `/`), a bubble menu when you select text, headings 1 to 4, lists and task lists, tables, callouts, collapsible blocks, video (YouTube, Vimeo, mp4), code blocks with highlighting, links and images. Images you paste, drop or pick from your disk are uploaded to `/admin/media`; "Image from library" inserts one that is already there.
+
+`format` decides what the field stores:
+
+- `json` (default): the document, as an object. Safe to store and easy to migrate.
+- `html`: a string such as `<p><strong>Hi</strong></p>`. The API stores whatever it is sent, so sanitize it before you show it in a page.
+
+Kiln's `content` columns hold any JSON value, so both work without a server change. Either kind of content opens in the editor, so you can change a field's `format` and old content still loads. It is saved in the new format the next time someone saves.
+
+To show the content in a page, use `cheese-editor/render`: it needs no React and no Tiptap, so it runs on a Worker too.
+
+```ts
+import { renderContent } from 'cheese-editor/render'
+import 'cheese-editor/prose.css' // styles for the rendered content (class `ce-prose`)
+
+const html = renderContent(post.content) // JSON is rendered safely; an HTML string needs a `sanitize` option
+```
+
+`RichTextEditor` is exported if you want the editor outside a resource form.
+
+### Theme
+
+The CSS is compiled and scoped to `.kiln-admin`, and it includes the editor's. It follows the system light or dark setting, or set `theme="light" | "dark"` on `<AdminApp>`. Re-skin it with CSS variables:
+
+```css
+.kiln-admin {
+  --k-accent: #0f766e;
+  --k-accent-ink: #fff;
+}
+```
+
+Variables: `--k-canvas`, `--k-surface`, `--k-subtle`, `--k-ink`, `--k-muted`, `--k-line`, `--k-accent`, `--k-accent-ink`, `--k-danger`, `--k-ok`, `--k-font`.
+
+### Session
+
+Tokens are kept in `localStorage` (key `kiln-admin`, change it with `storageKey`). The access token is refreshed on a `401`. If the refresh fails, the admin returns to the sign-in page. The sign-in page can also create the first administrator while the users table is empty (`POST /auth/setup`).
+
+Not there yet: bulk actions, sorting by column, revision history, and translations of the interface.
+
 ## Command-line tool
 
 ```sh
