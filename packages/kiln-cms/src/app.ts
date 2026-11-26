@@ -10,6 +10,8 @@ import { createRouter } from './core/openapi'
 import type { AppEnv } from './core/types/env'
 import { deliverWebhooks } from './core/webhooks'
 import { authRouter } from './modules/auth/auth.routes'
+import { createGlobalsRouters } from './modules/globals/globals.routes'
+import type { GlobalsOption } from './modules/globals/globals.schemas'
 import { usersAdminRouter } from './modules/users/users.admin-routes'
 
 export type KilnOptions = {
@@ -28,6 +30,12 @@ export type KilnOptions = {
    * which must call `c.set('user', { userId, email, role })`. `JWT_SECRET` is not needed in that case.
    */
   builtInAuth?: boolean
+  /**
+   * Single documents such as a home page or a menu, by name: `{ homepage: { schema: homepageSchema } }`.
+   * Mounts `GET /api/globals/{name}` (public unless `public: false`) and `GET`/`PUT /admin/globals/{name}`,
+   * all under `basePath`. They are stored in the `globals` table from `kiln-cms/schema`.
+   */
+  globals?: GlobalsOption
   /** Mounts the app's own routers. `/auth` and `/admin/users` are already mounted. */
   registerRoutes: (app: OpenAPIHono<AppEnv>) => void
   /** Registers change hooks with `onChange`. */
@@ -73,6 +81,11 @@ export function createApp(options: KilnOptions): OpenAPIHono<AppEnv> {
   if (options.builtInAuth !== false) {
     app.route(`${base}/auth`, authRouter)
     app.route(`${base}/admin/users`, usersAdminRouter)
+  }
+  if (options.globals && Object.keys(options.globals).length > 0) {
+    const globals = createGlobalsRouters(options.globals)
+    app.route(`${base}/api/globals`, globals.home)
+    app.route(`${base}/admin/globals`, globals.admin)
   }
   options.registerRoutes(app)
   options.registerHooks?.()

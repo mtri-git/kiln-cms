@@ -1,10 +1,11 @@
 import { createContext, type ReactNode, useCallback, useContext, useMemo, useState } from 'react'
 import type { ApiClient, User } from './api/client'
-import type { Resource } from './resource'
+import type { Global, Resource } from './resource'
 
 export type AdminContextValue = {
   client: ApiClient
   resources: Resource[]
+  globals: Global[]
   user: User
   signOut: () => void
 }

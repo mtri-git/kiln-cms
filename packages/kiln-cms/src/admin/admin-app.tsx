@@ -5,10 +5,11 @@ import { type ApiClient, createApiClient, type User } from './api/client'
 import { AdminContext, PortalRootContext, ToastProvider, useAdmin } from './context'
 import { MediaLibrary } from './media/media-library'
 import { Dashboard } from './pages/dashboard'
+import { GlobalEdit } from './pages/global-edit'
 import { LoginPage } from './pages/login'
 import { ResourceEdit } from './pages/resource-edit'
 import { ResourceList } from './pages/resource-list'
-import type { Resource } from './resource'
+import type { Global, Resource } from './resource'
 import { Link, segments, usePath } from './router'
 import { Centered, cx, IconButton, Spinner } from './ui'
 
@@ -17,6 +18,8 @@ export type AdminAppProps = {
   apiUrl?: string
   /** What the admin manages. Each resource gets a menu entry, a list and a form. */
   resources: Resource[]
+  /** Single documents such as site settings. Each gets a menu entry and a form. */
+  globals?: Global[]
   /** Name shown in the sidebar and on the sign-in page. Default `Kiln`. */
   title?: string
   /** Show the media library. Default `true`. */
@@ -33,6 +36,7 @@ type Session = { status: 'checking' } | { status: 'anonymous' } | { status: 'sig
 export function AdminApp({
   apiUrl = '',
   resources,
+  globals = [],
   title = 'Kiln',
   media = true,
   theme,
@@ -94,7 +98,7 @@ export function AdminApp({
     )
   } else {
     content = (
-      <AdminContext.Provider value={{ client, resources, user: session.user, signOut }}>
+      <AdminContext.Provider value={{ client, resources, globals, user: session.user, signOut }}>
         <Shell title={title} media={media} />
       </AdminContext.Provider>
     )
@@ -156,13 +160,27 @@ function Shell({ title, media }: { title: string; media: boolean }) {
 
 function Sidebar({ title, media, onClose }: { title: string; media: boolean; onClose: () => void }) {
   const path = usePath()
-  const [first] = segments(path)
-  const { resources, user, signOut } = useAdmin()
+  const [first, second] = segments(path)
+  const { resources, globals, user, signOut } = useAdmin()
 
-  const groups = new Map<string, Resource[]>()
+  type Entry = { key: string; label: string; to: string; active: boolean }
+  const groups = new Map<string, Entry[]>()
+  const add = (group: string, entry: Entry) => groups.set(group, [...(groups.get(group) ?? []), entry])
   for (const resource of resources) {
-    const key = resource.group ?? ''
-    groups.set(key, [...(groups.get(key) ?? []), resource])
+    add(resource.group ?? '', {
+      key: resource.name,
+      label: resource.label,
+      to: `/${resource.name}`,
+      active: first === resource.name,
+    })
+  }
+  for (const global of globals) {
+    add(global.group ?? 'Settings', {
+      key: `globals/${global.name}`,
+      label: global.label,
+      to: `/globals/${global.name}`,
+      active: first === 'globals' && second === global.name,
+    })
   }
 
   return (
@@ -183,9 +201,9 @@ function Sidebar({ title, media, onClose }: { title: string; media: boolean; onC
         {[...groups.entries()].map(([group, items]) => (
           <div key={group} className="mt-4">
             {group && <p className="px-2.5 pb-1 text-xs font-medium text-muted">{group}</p>}
-            {items.map((resource) => (
-              <NavItem key={resource.name} to={`/${resource.name}`} active={first === resource.name}>
-                {resource.label}
+            {items.map((entry) => (
+              <NavItem key={entry.key} to={entry.to} active={entry.active}>
+                {entry.label}
               </NavItem>
             ))}
           </div>
@@ -241,9 +259,13 @@ function NavItem({
 function Routes({ media }: { media: boolean }) {
   const path = usePath()
   const [name, id] = segments(path)
-  const { resources } = useAdmin()
+  const { resources, globals } = useAdmin()
 
   if (!name) return <Dashboard media={media} />
+  if (name === 'globals') {
+    const global = globals.find((candidate) => candidate.name === id)
+    return global ? <GlobalEdit key={global.name} global={global} /> : <NotFound />
+  }
   if (name === 'media' && media) {
     return (
       <div className="flex flex-col gap-4">

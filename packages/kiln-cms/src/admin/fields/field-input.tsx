@@ -1,8 +1,10 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQueries, useQuery } from '@tanstack/react-query'
 import { ImageIcon, X } from 'lucide-react'
-import { useState } from 'react'
+import { type ReactNode, useState } from 'react'
+import type { Media } from '../api/client'
 import { useAdmin } from '../context'
 import { RichTextEditor, type RichTextValue } from '../editor/rich-text-editor'
+import { useDebounced } from '../hooks'
 import { MediaPickerDialog } from '../media/media-picker'
 import { type Field, fieldLabel, type Row } from '../resource'
 import { Button, cx, FieldShell, Input, SelectBox, Switch, Textarea } from '../ui'
@@ -112,6 +114,15 @@ export function FieldInput({ field, value, onChange, error, disabled, formKey }:
         </FieldShell>
       )
 
+    case 'media':
+      return (
+        <FieldShell {...shell}>
+          {() => (
+            <MediaInput value={typeof value === 'string' ? value : null} onChange={onChange} disabled={disabled} />
+          )}
+        </FieldShell>
+      )
+
     case 'relation':
       return (
         <FieldShell {...shell}>
@@ -181,6 +192,64 @@ function ImageInput({
   )
 }
 
+function MediaInput({
+  value,
+  onChange,
+  disabled,
+}: {
+  value: string | null
+  onChange: (value: string | null) => void
+  disabled?: boolean
+}) {
+  const { client } = useAdmin()
+  const [picking, setPicking] = useState(false)
+  const file = useQuery({
+    queryKey: ['media-item', value],
+    queryFn: () => client.get<Media>(`/admin/media/${value}`),
+    enabled: Boolean(value),
+  })
+  const media = value ? file.data : undefined
+  return (
+    <div className="flex flex-col gap-2">
+      {value && (
+        <div className="flex items-center gap-3 overflow-hidden rounded-md border border-line bg-subtle p-2">
+          {media?.contentType.startsWith('image/') ? (
+            <img src={media.url} alt={media.alt ?? ''} className="size-16 shrink-0 rounded object-cover" />
+          ) : (
+            <ImageIcon className="size-6 shrink-0 text-muted" />
+          )}
+          <span className="min-w-0 truncate text-xs text-muted">
+            {file.isError ? 'File not found' : (media?.fileName ?? 'Loading…')}
+          </span>
+        </div>
+      )}
+      <div className="flex gap-2">
+        <Button size="sm" disabled={disabled} onClick={() => setPicking(true)}>
+          <ImageIcon className="size-3.5" />
+          {value ? 'Replace' : 'Choose file'}
+        </Button>
+        {value && (
+          <Button size="sm" variant="ghost" disabled={disabled} onClick={() => onChange(null)}>
+            <X className="size-3.5" />
+            Remove
+          </Button>
+        )}
+      </div>
+      <MediaPickerDialog
+        open={picking}
+        onClose={() => setPicking(false)}
+        onPick={(picked) => {
+          onChange(picked.id)
+          setPicking(false)
+        }}
+      />
+    </div>
+  )
+}
+
+/** How many matches the relation search shows. */
+const RELATION_RESULTS = 20
+
 function RelationInput({
   id,
   field,
@@ -196,60 +265,137 @@ function RelationInput({
 }) {
   const { client, resources } = useAdmin()
   const target = resources.find((resource) => resource.name === field.resource)
+  const [search, setSearch] = useState('')
+  const [open, setOpen] = useState(false)
+  const query = useDebounced(search)
 
-  const options = useQuery({
-    queryKey: ['relation', field.resource],
-    enabled: Boolean(target),
+  let selected: string[] = []
+  if (field.multiple) selected = Array.isArray(value) ? value.map(String) : []
+  else if (typeof value === 'string' && value) selected = [value]
+
+  // Names of the chosen records: one request each, shared with the edit page's cache.
+  const chosen = useQueries({
+    queries: selected.map((recordId) => ({
+      queryKey: ['record', field.resource, recordId],
+      queryFn: () => client.get<Row>(`${target?.path}/${recordId}`),
+      enabled: Boolean(target),
+      staleTime: 60_000,
+    })),
+  })
+
+  const searchParam = target?.searchParam === undefined ? 'search' : target.searchParam
+  const results = useQuery({
+    queryKey: ['relation', field.resource, query],
+    enabled: Boolean(target) && open,
     queryFn: async () => {
       if (!target) return []
-      const page = await client.list<Row>(target.path, { limit: 100 })
-      return page.data.map((row) => ({ value: String(row.id), label: String(row[target.titleField] ?? row.id) }))
+      const page = await client.list<Row>(target.path, {
+        limit: searchParam ? RELATION_RESULTS : 100,
+        ...(searchParam && query ? { [searchParam]: query } : {}),
+      })
+      return page.data
     },
   })
 
   if (!target) return <p className="text-xs text-danger">Unknown resource “{field.resource}”.</p>
-  if (options.isLoading) return <p className="text-xs text-muted">Loading…</p>
-  const items = options.data ?? []
+  const nameOf = (row: Row | undefined, recordId: string) => String(row?.[target.titleField] ?? recordId)
 
-  if (!field.multiple) {
-    return (
-      <SelectBox
-        id={id}
-        value={typeof value === 'string' ? value : null}
-        onChange={onChange}
-        options={items}
-        placeholder={field.placeholder ?? 'None'}
-        allowEmpty={!field.required}
-        disabled={disabled}
-      />
-    )
+  const pick = (recordId: string) => {
+    if (field.multiple) onChange(selected.includes(recordId) ? selected : [...selected, recordId])
+    else {
+      onChange(recordId)
+      setOpen(false)
+    }
+    setSearch('')
   }
+  const drop = (recordId: string) =>
+    onChange(field.multiple ? selected.filter((current) => current !== recordId) : null)
 
-  const selected = Array.isArray(value) ? (value as string[]) : []
-  const toggle = (itemId: string) =>
-    onChange(selected.includes(itemId) ? selected.filter((current) => current !== itemId) : [...selected, itemId])
+  // Without a search parameter the API returns everything: filter the names here.
+  const filtered = (results.data ?? []).filter(
+    (row) => searchParam || !query || nameOf(row, String(row.id)).toLowerCase().includes(query.toLowerCase()),
+  )
 
-  if (items.length === 0) return <p className="text-xs text-muted">Nothing to choose from yet.</p>
+  let list: ReactNode
+  if (results.isLoading) list = <p className="px-2.5 py-1.5 text-xs text-muted">Loading…</p>
+  else if (filtered.length === 0) list = <p className="px-2.5 py-1.5 text-xs text-muted">No matches</p>
+  else
+    list = filtered.map((row) => {
+      const recordId = String(row.id)
+      const on = selected.includes(recordId)
+      return (
+        <button
+          key={recordId}
+          type="button"
+          role="option"
+          aria-selected={on}
+          onMouseDown={(event) => event.preventDefault()}
+          onClick={() => pick(recordId)}
+          className={cx(
+            'flex w-full items-center gap-2 px-2.5 py-1.5 text-left text-sm hover:bg-subtle',
+            on && 'text-accent',
+          )}
+        >
+          {nameOf(row, recordId)}
+        </button>
+      )
+    })
+
   return (
-    <fieldset id={id} className="m-0 flex min-w-0 flex-wrap gap-1.5 p-0">
-      {items.map((item) => {
-        const on = selected.includes(item.value)
-        return (
-          <button
-            key={item.value}
-            type="button"
-            aria-pressed={on}
-            disabled={disabled}
-            onClick={() => toggle(item.value)}
-            className={cx(
-              'rounded-full border px-2.5 py-0.5 text-xs transition-colors disabled:opacity-50',
-              on ? 'border-accent bg-accent/15 text-accent' : 'border-line text-muted hover:bg-subtle hover:text-ink',
-            )}
-          >
-            {item.label}
-          </button>
-        )
-      })}
-    </fieldset>
+    <div className="relative flex flex-col gap-2">
+      {selected.length > 0 && (
+        <div className="flex flex-wrap gap-1.5">
+          {selected.map((recordId, index) => {
+            const name = chosen[index]?.isError ? `Missing (${recordId})` : nameOf(chosen[index]?.data, recordId)
+            return (
+              <span
+                key={recordId}
+                className="inline-flex items-center gap-1 rounded-full border border-accent bg-accent/15 py-0.5 pr-1 pl-2.5 text-xs text-accent"
+              >
+                {name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${name}`}
+                  disabled={disabled}
+                  onClick={() => drop(recordId)}
+                  className="rounded-full p-0.5 hover:bg-accent/20"
+                >
+                  <X className="size-3" />
+                </button>
+              </span>
+            )
+          })}
+        </div>
+      )}
+      {(field.multiple || selected.length === 0) && (
+        <Input
+          id={id}
+          role="combobox"
+          aria-expanded={open}
+          aria-autocomplete="list"
+          placeholder={field.placeholder ?? `Search ${target.label.toLowerCase()}…`}
+          disabled={disabled}
+          value={search}
+          onChange={(event) => {
+            setSearch(event.target.value)
+            setOpen(true)
+          }}
+          onFocus={() => setOpen(true)}
+          // Lets a click on a result land before the list closes.
+          onBlur={() => setTimeout(() => setOpen(false), 150)}
+          onKeyDown={(event) => {
+            if (event.key === 'Escape') setOpen(false)
+          }}
+        />
+      )}
+      {open && (
+        <div
+          role="listbox"
+          className="absolute top-full z-[80] mt-1 max-h-64 w-full overflow-y-auto rounded-md border border-line bg-surface py-1 shadow-lg"
+        >
+          {list}
+        </div>
+      )}
+    </div>
   )
 }

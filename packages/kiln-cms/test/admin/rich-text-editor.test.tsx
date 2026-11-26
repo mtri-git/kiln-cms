@@ -27,7 +27,13 @@ function setup(ui: ReactNode, client = fakeClient()) {
         {/* AdminApp provides this: dialogs and menus render into it. */}
         <PortalRootContext.Provider value={document.body}>
           <AdminContext.Provider
-            value={{ client: client as unknown as ApiClient, resources: [], user, signOut: () => undefined }}
+            value={{
+              client: client as unknown as ApiClient,
+              resources: [],
+              globals: [],
+              user,
+              signOut: () => undefined,
+            }}
           >
             {ui}
           </AdminContext.Provider>

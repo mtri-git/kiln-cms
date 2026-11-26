@@ -4,56 +4,11 @@ import { type FormEvent, useEffect, useRef, useState } from 'react'
 import { ApiError } from '../api/client'
 import { useAdmin, useToast } from '../context'
 import { FieldInput } from '../fields/field-input'
+import { buildPayload, initialValues, missingFields, type Values } from '../fields/values'
 import { formatDate } from '../hooks'
 import { type Field, getPath, type Resource, type Row, singularOf, slugify } from '../resource'
 import { Link, useNavigate } from '../router'
 import { Badge, Button, Card, Centered, ConfirmDialog, Spinner } from '../ui'
-
-type Values = Record<string, unknown>
-
-const isEmpty = (value: unknown) =>
-  value === null || value === undefined || value === '' || (Array.isArray(value) && value.length === 0)
-
-function defaultValue(field: Field): unknown {
-  switch (field.type) {
-    case 'boolean':
-      return false
-    case 'relation':
-      return field.multiple ? [] : null
-    case 'text':
-    case 'textarea':
-    case 'slug':
-      return ''
-    default:
-      return null
-  }
-}
-
-function initialValues(fields: Field[], record: Row | null): Values {
-  const values: Values = {}
-  for (const field of fields) {
-    const raw = record ? (field.read ? field.read(record) : record[field.name]) : undefined
-    values[field.name] = raw === undefined || raw === null ? defaultValue(field) : raw
-  }
-  return values
-}
-
-/** The request body: what the form holds, minus what must not be sent. */
-function buildPayload(fields: Field[], values: Values, isNew: boolean): Row {
-  const payload: Row = {}
-  for (const field of fields) {
-    if (field.readOnly || (field.readOnlyOnEdit && !isNew)) continue
-    const value = values[field.name]
-    if (isEmpty(value)) {
-      if (field.omitIfEmpty) continue
-      // An empty optional text is "no value", not an empty string.
-      payload[field.name] = typeof value === 'string' && field.required ? value : Array.isArray(value) ? [] : null
-      continue
-    }
-    payload[field.name] = value
-  }
-  return payload
-}
 
 export function ResourceEdit({ resource, id }: { resource: Resource; id: string }) {
   const { client } = useAdmin()
@@ -185,11 +140,7 @@ function EditForm({ resource, id, record }: { resource: Resource; id: string; re
 
   const submit = (event: FormEvent) => {
     event.preventDefault()
-    const missing: Record<string, string> = {}
-    for (const field of fields) {
-      const required = field.required && !(field.omitIfEmpty && !isNew)
-      if (required && !field.readOnly && isEmpty(values[field.name])) missing[field.name] = 'This field is required'
-    }
+    const missing = missingFields(fields, values, isNew)
     setErrors(missing)
     if (Object.keys(missing).length > 0) {
       toast('Fill in the required fields', 'error')

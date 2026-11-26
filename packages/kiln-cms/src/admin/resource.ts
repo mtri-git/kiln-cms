@@ -38,8 +38,10 @@ export type Field =
   | (FieldBase & { type: 'image' })
   /** Tiptap editor. `json` stores the document object, `html` stores a string. Default `json`. */
   | (FieldBase & { type: 'richtext'; format?: 'json' | 'html' })
-  /** Pick one (`id`) or many (`id[]`) records of another resource. */
+  /** Pick one (`id`) or many (`id[]`) records of another resource. Searches it with its `searchParam`. */
   | (FieldBase & { type: 'relation'; resource: string; multiple?: boolean })
+  /** Pick a file from the media library. Stores its id; a record that holds `{ id, ... }` is read as that id. */
+  | (FieldBase & { type: 'media' })
 
 export type Column =
   | string
@@ -91,6 +93,26 @@ export type Resource = {
   group?: string
   canCreate?: boolean
   canDelete?: boolean
+}
+
+/**
+ * A single document, such as site settings, served by the `globals` option of the API.
+ * The admin reads `{ data }` from `GET path` and saves the form with `PUT path`.
+ */
+export type Global = {
+  /** Used in the URL: `#/globals/settings`. */
+  name: string
+  label: string
+  /** API path, e.g. `/admin/globals/settings`. */
+  path: string
+  fields: Field[]
+  /** Heading above it in the menu. Default `Settings`. */
+  group?: string
+}
+
+/** Identity helper that checks the shape of a global. */
+export function defineGlobal(global: Global): Global {
+  return global
 }
 
 /** Identity helper that checks the shape of a resource. */

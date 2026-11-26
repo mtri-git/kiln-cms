@@ -230,6 +230,11 @@ export function createApiClient({ baseUrl = '', storageKey = 'kiln-admin', onSig
       return data as T
     },
 
+    async put<T = Row>(path: string, json: unknown) {
+      const { data } = await request('put', path, { json })
+      return data as T
+    },
+
     async remove(path: string) {
       await request('delete', path)
     },

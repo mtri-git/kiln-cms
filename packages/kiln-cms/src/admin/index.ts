@@ -22,9 +22,11 @@ export { usersResource } from './presets'
 export {
   type Action,
   type Column,
+  defineGlobal,
   defineResource,
   type Field,
   type Filter,
+  type Global,
   type Resource,
   type Row,
   type SelectOption,

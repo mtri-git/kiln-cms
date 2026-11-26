@@ -128,10 +128,35 @@ The package's tables (`users`, `sessions`, `rate_limits`) are exported from `kil
 | `version`        | `0.1.0`        | Version shown in `/openapi.json` and `/docs`                                                              |
 | `basePath`       | none           | Prefix for the routes `kiln-cms` mounts itself. `'/api'` gives `/api/health`, `/api/auth`, `/api/docs`... |
 | `builtInAuth`    | `true`         | `false` leaves out `/auth` and `/admin/users`                                                             |
+| `globals`        | none           | Single documents by name: `{ settings: { schema } }`. See [Globals](#globals)                             |
 
 Use `basePath` when the app only receives part of a domain (a route such as `example.com/api/*`). Your own routes are not moved: `registerRoutes` decides where they go.
 
 Use `builtInAuth: false` when your users sign in somewhere else, for example behind Cloudflare Access. Write your own `requireAuth` middleware; it must call `c.set('user', { userId, email, role })`. The `users`, `sessions` and `rate_limits` tables and the `JWT_SECRET` secret are then not needed.
+
+## Globals
+
+A global is one document with a name: site settings, a footer text, a banner. Declare each one with a zod schema:
+
+```ts
+import { z } from '@hono/zod-openapi'
+
+export const appOptions: KilnOptions = {
+  registerRoutes,
+  globals: {
+    settings: { schema: z.object({ tagline: z.string(), bannerText: z.string().nullable() }) },
+    secrets: { schema: z.object({ analyticsId: z.string() }), public: false },
+  },
+}
+```
+
+| Route                       | Who             | What                                                                |
+| --------------------------- | --------------- | ------------------------------------------------------------------- |
+| `GET /api/globals/{name}`   | anyone          | `{ name, data, updatedAt }`. Left out with `public: false`          |
+| `GET /admin/globals/{name}` | signed-in users | The same                                                            |
+| `PUT /admin/globals/{name}` | signed-in users | Replaces `data`, validated with the schema. Emits `globals.updated` |
+
+`data` and `updatedAt` are `null` until the first save. The routes move with `basePath`. They are stored in the `globals` table of `kiln-cms/schema`: run `pnpm db:generate` after upgrading to create it. Names are lowercase letters, digits and dashes.
 
 ## Files
 
@@ -233,19 +258,35 @@ The admin is a single-page app with hash routes (`#/posts/123`): it works on any
 | `fields`                 | See below                                                                                |
 | `canCreate`, `canDelete` | `false` hides the button                                                                 |
 
-| Field `type` | Stores                        | Options                                                                    |
-| ------------ | ----------------------------- | -------------------------------------------------------------------------- |
-| `text`       | string                        | `inputType` (`text`, `email`, `password`, `url`), `maxLength`              |
-| `textarea`   | string                        | `rows`, `maxLength`                                                        |
-| `number`     | number                        | `integer`                                                                  |
-| `boolean`    | boolean                       |                                                                            |
-| `select`     | string                        | `options: [{ value, label }]`                                              |
-| `slug`       | string                        | `from`: the field it follows until you edit it. Strips accents (`đ` → `d`) |
-| `image`      | URL string                    | Picks from the media library                                               |
-| `richtext`   | JSON object or HTML string    | `format: 'json'` (default) or `'html'`                                     |
-| `relation`   | id, or `id[]` with `multiple` | `resource`: the `name` of another resource                                 |
+| Field `type` | Stores                        | Options                                                                        |
+| ------------ | ----------------------------- | ------------------------------------------------------------------------------ |
+| `text`       | string                        | `inputType` (`text`, `email`, `password`, `url`), `maxLength`                  |
+| `textarea`   | string                        | `rows`, `maxLength`                                                            |
+| `number`     | number                        | `integer`                                                                      |
+| `boolean`    | boolean                       |                                                                                |
+| `select`     | string                        | `options: [{ value, label }]`                                                  |
+| `slug`       | string                        | `from`: the field it follows until you edit it. Strips accents (`đ` → `d`)     |
+| `image`      | URL string                    | Picks from the media library                                                   |
+| `media`      | media id                      | Picks from the media library. Reads `{ id, ... }` from a record as the id      |
+| `richtext`   | JSON object or HTML string    | `format: 'json'` (default) or `'html'`                                         |
+| `relation`   | id, or `id[]` with `multiple` | `resource`: the `name` of another resource. Searches it with its `searchParam` |
 
 Every field also takes `label`, `description`, `placeholder`, `required`, `position` (`main` or `sidebar`), `mode` (`create` or `edit` only), `readOnly`, `readOnlyOnEdit`, `omitIfEmpty` and `read(record)` (when the form value is not `record[name]`, e.g. `tagIds` from `record.tags`).
+
+### Globals
+
+`defineGlobal({ name, label, path, fields, group })` describes a global of the API (see [Globals](#globals)) for the admin. Pass them as `globals` to `AdminApp`: each gets a menu entry (under `Settings` by default) and a form at `#/globals/{name}`. The form takes the same field types as a resource. Saving sends the whole document with `PUT path`, keeping the keys the form does not show.
+
+```tsx
+const settings = defineGlobal({
+  name: 'settings',
+  label: 'Site settings',
+  path: '/admin/globals/settings',
+  fields: [{ name: 'tagline', type: 'text', required: true }],
+})
+
+<AdminApp resources={[posts]} globals={[settings]} />
+```
 
 ### Rich text
 
