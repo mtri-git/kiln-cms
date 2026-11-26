@@ -99,7 +99,7 @@ describe('RichTextEditor', () => {
     const { view } = setup(<RichTextEditor value={null} onChange={() => undefined} />)
     await editingArea(view.container)
     fireEvent.click(await screen.findByRole('button', { name: 'Insert' }))
-    for (const name of ['Table', 'Callout', 'Video']) {
+    for (const name of ['Table', 'Callout', 'Video', 'HTML']) {
       expect(screen.queryAllByText(new RegExp(name, 'i')).length).toBeGreaterThan(0)
     }
   })

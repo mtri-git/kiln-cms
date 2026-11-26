@@ -2,6 +2,7 @@ import { basicKit, defineFeature, type EditorFeature, ToolbarButton } from 'chee
 import { callout } from 'cheese-editor/callout'
 import { codeBlock } from 'cheese-editor/code-block'
 import { details } from 'cheese-editor/details'
+import { htmlBlock } from 'cheese-editor/html-block'
 import { image } from 'cheese-editor/image'
 import { table } from 'cheese-editor/table'
 import { video } from 'cheese-editor/video'
@@ -62,6 +63,7 @@ export function createAdminFeatures({ upload, onError, openMediaLibrary }: Admin
     callout(),
     details(),
     video(),
+    htmlBlock(),
     mediaLibrary(openMediaLibrary),
   ]
 }

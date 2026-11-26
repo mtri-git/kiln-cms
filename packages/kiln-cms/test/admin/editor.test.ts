@@ -215,3 +215,19 @@ describe('features', () => {
     expect(calls).toEqual([])
   })
 })
+
+describe('links', () => {
+  test('a link gets no nofollow and does not open a new tab by default', () => {
+    const editor = createEditor('<p><a href="/pricing">hello</a></p>')
+    expect(editor.getJSON().content?.[0]?.content?.[0]?.marks?.[0]?.attrs).toMatchObject({ target: null, rel: null })
+    expect(editor.getHTML()).toBe('<p><a href="/pricing">hello</a></p>')
+  })
+})
+
+describe('HTML blocks', () => {
+  test('HTML imported as <div data-type="html-block"> is kept as it was written', () => {
+    const raw = '<div class="price"><span>1</span></div>'
+    const editor = createEditor(`<div data-type="html-block">${raw}</div>`)
+    expect(editor.getJSON().content?.[0]).toMatchObject({ type: 'htmlBlock', attrs: { html: raw } })
+  })
+})

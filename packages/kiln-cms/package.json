@@ -1,6 +1,6 @@
 {
   "name": "kiln-cms",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "A small headless CMS core on Hono and Drizzle (SQLite). Adapters for Cloudflare Workers (D1, R2), Node.js and Bun (SQLite file, local folder).",
   "keywords": [
     "cms",
@@ -88,7 +88,7 @@
     "@hono/zod-openapi": "^1.2.0",
     "@libsql/client": "^0.18.0",
     "@tanstack/react-query": "^5.0.0",
-    "cheese-editor": "^0.1.0",
+    "cheese-editor": "^0.2.0",
     "drizzle-orm": "^0.45.1",
     "hono": "^4.12.8",
     "lowlight": "^3.0.0",
@@ -141,7 +141,7 @@
     "@types/react": "^19.2.0",
     "@types/react-dom": "^19.2.0",
     "@vitejs/plugin-react": "^6.3.0",
-    "cheese-editor": "^0.1.0",
+    "cheese-editor": "^0.2.0",
     "drizzle-orm": "^0.45.1",
     "happy-dom": "^20.0.0",
     "hono": "^4.12.8",

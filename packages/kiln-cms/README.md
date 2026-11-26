@@ -249,7 +249,7 @@ Every field also takes `label`, `description`, `placeholder`, `required`, `posit
 
 ### Rich text
 
-A `richtext` field uses [cheese-editor](https://github.com/mtri-git/cheese-editor): a toolbar, a slash menu (type `/`), a bubble menu when you select text, headings 1 to 4, lists and task lists, tables, callouts, collapsible blocks, video (YouTube, Vimeo, mp4), code blocks with highlighting, links and images. Images you paste, drop or pick from your disk are uploaded to `/admin/media`; "Image from library" inserts one that is already there.
+A `richtext` field uses [cheese-editor](https://github.com/mtri-git/cheese-editor): a toolbar, a slash menu (type `/`), a bubble menu when you select text, headings 1 to 4, lists and task lists, tables, callouts, collapsible blocks, video (YouTube, Vimeo, mp4), raw HTML blocks, code blocks with highlighting, links and images. Links have no `nofollow`; "Open in new tab" adds `target="_blank" rel="noopener noreferrer"`. Images you paste, drop or pick from your disk are uploaded to `/admin/media`; "Image from library" inserts one that is already there.
 
 `format` decides what the field stores:
 
@@ -266,6 +266,8 @@ import 'cheese-editor/prose.css' // styles for the rendered content (class `ce-p
 
 const html = renderContent(post.content) // JSON is rendered safely; an HTML string needs a `sanitize` option
 ```
+
+An HTML block is output as it was written, so it is left out unless you allow it: `renderContent(post.content, { rawHtml: true })` when you trust the people who edit content, or `rawHtml: (html) => DOMPurify.sanitize(html)`. To import HTML the editor has no node for (an embed widget, a styled table), wrap it in `<div data-type="html-block">…</div>`: it opens as an HTML block and is kept as it is.
 
 `RichTextEditor` is exported if you want the editor outside a resource form.
 

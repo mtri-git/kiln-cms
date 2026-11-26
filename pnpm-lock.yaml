@@ -70,8 +70,8 @@ importers:
         specifier: ^6.3.0
         version: 6.3.0(vite@8.3.8(@types/node@24.19.2)(esbuild@0.28.2)(jiti@2.7.0)(tsx@4.23.15)(yaml@2.9.1))
       cheese-editor:
-        specifier: ^0.1.0
-        version: 0.1.0(@tiptap/extension-code-block@3.35.0(@tiptap/core@3.35.0(@tiptap/pm@3.35.0))(@tiptap/pm@3.35.0))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(emojibase@18.0.0)(highlight.js@11.11.2)(lowlight@3.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
+        specifier: ^0.2.0
+        version: 0.2.0(@tiptap/extension-code-block@3.35.0(@tiptap/core@3.35.0(@tiptap/pm@3.35.0))(@tiptap/pm@3.35.0))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(emojibase@18.0.0)(highlight.js@11.11.2)(lowlight@3.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
       drizzle-orm:
         specifier: ^0.45.1
         version: 0.45.4(@cloudflare/workers-types@4.20260702.1)(@libsql/client@0.18.0)
@@ -130,7 +130,7 @@ importers:
         specifier: ^4.12.8
         version: 4.13.18
       kiln-cms:
-        specifier: ^0.5.0
+        specifier: ^0.6.0
         version: link:../packages/kiln-cms
       zod:
         specifier: ^4.2.1
@@ -1766,8 +1766,8 @@ packages:
     resolution: {integrity: sha512-XWAtwJ6OHO+tj0EKCs0Y2UamnyOxseZWltU4x2U2wh8g4AigdjwvtUjvLP2tqkA/avxHEtzxNaqGq/YGNwckKg==}
     engines: {node: '>=18'}
 
-  cheese-editor@0.1.0:
-    resolution: {integrity: sha512-QRLVASkIqs9UUJxXyF84V/CutAbygdi/mYHQEPeG2xVepxySpkA7zkQRKLr37BVZQ//YqemYIlvxfP0iJBUlGQ==}
+  cheese-editor@0.2.0:
+    resolution: {integrity: sha512-uAVESVM8KjwehRzK7n3rRipINkl0G60xU9It65fY29vXfe/s6kKX0GEKveBHkBQOBdFtG+lPHiL96NMt+Eh1SQ==}
     peerDependencies:
       lowlight: ^3.0.0
       react: ^18.0.0 || ^19.0.0
@@ -3800,7 +3800,7 @@ snapshots:
 
   chai@6.3.0: {}
 
-  cheese-editor@0.1.0(@tiptap/extension-code-block@3.35.0(@tiptap/core@3.35.0(@tiptap/pm@3.35.0))(@tiptap/pm@3.35.0))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(emojibase@18.0.0)(highlight.js@11.11.2)(lowlight@3.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
+  cheese-editor@0.2.0(@tiptap/extension-code-block@3.35.0(@tiptap/core@3.35.0(@tiptap/pm@3.35.0))(@tiptap/pm@3.35.0))(@types/react-dom@19.3.0(@types/react@19.3.0))(@types/react@19.3.0)(emojibase@18.0.0)(highlight.js@11.11.2)(lowlight@3.3.0)(react-dom@19.3.1(react@19.3.1))(react@19.3.1):
     dependencies:
       '@floating-ui/dom': 1.8.0
       '@tiptap/core': 3.35.0(@tiptap/pm@3.35.0)
