@@ -333,7 +333,7 @@ pnpm check</code></pre>
       <h2>Scope</h2>
       <p>Kiln stays small on purpose. It does not have, and does not plan:</p>
       <ul>
-        <li>an admin UI (each site brings its own; the API is described at <code>/openapi.json</code>)</li>
+        <li>an admin UI built into the API: <a href="https://github.com/mtri-git/kiln-cms/blob/main/template/docs/recipes/add-admin-ui.md"><code>kiln-cms/admin</code></a> is a separate, optional entry that headless apps never load; the API stays headless and is described at <code>/openapi.json</code></li>
         <li>content types created at runtime</li>
         <li>runtime plugins (extend with modules and change hooks)</li>
         <li>databases other than SQLite</li>
