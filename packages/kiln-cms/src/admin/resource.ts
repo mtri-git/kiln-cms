@@ -91,6 +91,8 @@ export type Resource = {
   actions?: Action[]
   /** Heading above this resource in the menu. */
   group?: string
+  /** Menu icon, e.g. a lucide icon at `size-4`. Without one the collapsed menu shows the first letter. */
+  icon?: ReactNode
   canCreate?: boolean
   canDelete?: boolean
 }
@@ -108,6 +110,8 @@ export type Global = {
   fields: Field[]
   /** Heading above it in the menu. Default `Settings`. */
   group?: string
+  /** Menu icon, as on a resource. */
+  icon?: ReactNode
 }
 
 /** Identity helper that checks the shape of a global. */

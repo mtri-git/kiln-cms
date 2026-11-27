@@ -156,10 +156,10 @@
   }
 
   /*
-   * The slash menu is mounted on <body>, outside .kiln-admin, so it cannot read the --k-* variables. It
-   * follows the system setting, which is what the admin does too unless you force a theme.
+   * The slash menu is mounted on <body>, outside .kiln-admin, so it cannot read the --k-* variables. The
+   * admin marks <html> with the theme it paints (the user's choice or the system setting).
    */
-  @media (prefers-color-scheme: dark) {
+  :root[data-kiln-theme="dark"] {
     .ce-floating {
       --ce-bg: #0d1117;
       --ce-fg: #e6edf3;

@@ -314,7 +314,11 @@ An HTML block is output as it was written, so it is left out unless you allow it
 
 ### Theme
 
-The CSS is compiled and scoped to `.kiln-admin`, and it includes the editor's. It follows the system light or dark setting, or set `theme="light" | "dark"` on `<AdminApp>`. Re-skin it with CSS variables:
+The CSS is compiled and scoped to `.kiln-admin`, and it includes the editor's: import only `kiln-cms/admin/styles.css`. Importing `cheese-editor/styles.css` again, outside a layer, overrides the editor colours and leaves it light in dark mode.
+
+The menu has a theme switch (system, light, dark) and a button that collapses it to icons on wide screens. Both choices are kept per browser in `localStorage` (`<storageKey>:theme`, `<storageKey>:nav`). Set `theme="light" | "dark"` on `<AdminApp>` to force a theme and hide the switch. Give a resource or global an `icon` (e.g. a lucide icon at `size-4`) to show it in the collapsed menu; without one it shows the first letter of the label.
+
+Re-skin it with CSS variables:
 
 ```css
 .kiln-admin {

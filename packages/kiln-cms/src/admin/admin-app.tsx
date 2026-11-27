@@ -1,5 +1,16 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { Image as ImageIcon, LayoutDashboard, LogOut, Menu as MenuIcon, X } from 'lucide-react'
+import {
+  Image as ImageIcon,
+  LayoutDashboard,
+  LogOut,
+  Menu as MenuIcon,
+  Monitor,
+  Moon,
+  PanelLeftClose,
+  PanelLeftOpen,
+  Sun,
+  X,
+} from 'lucide-react'
 import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react'
 import { type ApiClient, createApiClient, type User } from './api/client'
 import { AdminContext, PortalRootContext, ToastProvider, useAdmin } from './context'
@@ -9,6 +20,7 @@ import { GlobalEdit } from './pages/global-edit'
 import { LoginPage } from './pages/login'
 import { ResourceEdit } from './pages/resource-edit'
 import { ResourceList } from './pages/resource-list'
+import { type ThemeChoice, useResolvedTheme, useStoredState } from './preferences'
 import type { Global, Resource } from './resource'
 import { Link, segments, usePath } from './router'
 import { Centered, cx, IconButton, Spinner } from './ui'
@@ -24,14 +36,20 @@ export type AdminAppProps = {
   title?: string
   /** Show the media library. Default `true`. */
   media?: boolean
-  /** Force a theme. By default it follows the system setting. */
+  /** Force a theme and hide the theme switch. By default each user picks system, light or dark in the menu. */
   theme?: 'light' | 'dark'
-  /** localStorage key for the session. Change it when two admins share one origin. */
+  /** localStorage key for the session, also the prefix of the theme and menu settings. Change it when two admins share one origin. */
   storageKey?: string
   className?: string
 }
 
 type Session = { status: 'checking' } | { status: 'anonymous' } | { status: 'signed-in'; user: User }
+
+const THEME_CHOICES = ['system', 'light', 'dark'] as const
+const NAV_STATES = ['expanded', 'collapsed'] as const
+
+/** What the theme switch shows, and how it changes the choice. */
+type ThemeControl = { choice: ThemeChoice; onChange: (choice: ThemeChoice) => void }
 
 export function AdminApp({
   apiUrl = '',
@@ -44,6 +62,20 @@ export function AdminApp({
   className,
 }: AdminAppProps) {
   const [root, setRoot] = useState<HTMLElement | null>(null)
+  const prefix = storageKey ?? 'kiln-admin'
+  const [themeChoice, setThemeChoice] = useStoredState<ThemeChoice>(`${prefix}:theme`, 'system', THEME_CHOICES)
+  const resolvedTheme = useResolvedTheme(theme ?? themeChoice)
+  const themeControl: ThemeControl | undefined = theme ? undefined : { choice: themeChoice, onChange: setThemeChoice }
+
+  // Menus such as the editor's slash menu are mounted on <body>, outside the admin root, and read this.
+  useEffect(() => {
+    const html = document.documentElement
+    html.dataset.kilnTheme = resolvedTheme
+    return () => {
+      delete html.dataset.kilnTheme
+    }
+  }, [resolvedTheme])
+
   const [session, setSession] = useState<Session>({ status: 'checking' })
   const queryClient = useMemo(
     () =>
@@ -99,13 +131,13 @@ export function AdminApp({
   } else {
     content = (
       <AdminContext.Provider value={{ client, resources, globals, user: session.user, signOut }}>
-        <Shell title={title} media={media} />
+        <Shell title={title} media={media} storagePrefix={prefix} themeControl={themeControl} />
       </AdminContext.Provider>
     )
   }
 
   return (
-    <div ref={setRoot} data-theme={theme} className={cx('kiln-admin min-h-dvh', className)}>
+    <div ref={setRoot} data-theme={resolvedTheme} className={cx('kiln-admin min-h-dvh', className)}>
       <PortalRootContext.Provider value={root}>
         <QueryClientProvider client={queryClient}>
           <ToastProvider>{content}</ToastProvider>
@@ -115,16 +147,33 @@ export function AdminApp({
   )
 }
 
-function Shell({ title, media }: { title: string; media: boolean }) {
+function Shell({
+  title,
+  media,
+  storagePrefix,
+  themeControl,
+}: {
+  title: string
+  media: boolean
+  storagePrefix: string
+  themeControl?: ThemeControl
+}) {
   const path = usePath()
   const [navOpen, setNavOpen] = useState(false)
+  const [navState, setNavState] = useStoredState(`${storagePrefix}:nav`, 'expanded', NAV_STATES)
+  const collapsed = navState === 'collapsed'
 
   // Close the mobile menu after a navigation.
   // biome-ignore lint/correctness/useExhaustiveDependencies: `path` is the trigger
   useEffect(() => setNavOpen(false), [path])
 
   return (
-    <div className="md:grid md:min-h-dvh md:grid-cols-[15rem_minmax(0,1fr)]">
+    <div
+      className={cx(
+        'md:grid md:min-h-dvh',
+        collapsed ? 'md:grid-cols-[3.5rem_minmax(0,1fr)]' : 'md:grid-cols-[15rem_minmax(0,1fr)]',
+      )}
+    >
       <header className="flex items-center gap-2 border-b border-line bg-surface px-3 py-2 md:hidden">
         <IconButton aria-label="Open menu" onClick={() => setNavOpen(true)}>
           <MenuIcon className="size-5" />
@@ -143,10 +192,18 @@ function Shell({ title, media }: { title: string; media: boolean }) {
       <aside
         className={cx(
           'fixed inset-y-0 left-0 z-40 w-60 -translate-x-full border-r border-line bg-surface transition-transform md:sticky md:top-0 md:h-dvh md:translate-x-0',
+          collapsed && 'md:w-14',
           navOpen && 'translate-x-0',
         )}
       >
-        <Sidebar title={title} media={media} onClose={() => setNavOpen(false)} />
+        <Sidebar
+          title={title}
+          media={media}
+          collapsed={collapsed}
+          onToggleCollapsed={() => setNavState(collapsed ? 'expanded' : 'collapsed')}
+          themeControl={themeControl}
+          onClose={() => setNavOpen(false)}
+        />
       </aside>
 
       <main className="min-w-0 p-4 md:p-8">
@@ -158,12 +215,30 @@ function Shell({ title, media }: { title: string; media: boolean }) {
   )
 }
 
-function Sidebar({ title, media, onClose }: { title: string; media: boolean; onClose: () => void }) {
+/*
+ * The collapsed state only applies from `md` up: the mobile menu is a drawer and always shows labels,
+ * so every collapsed style below carries the `md:` prefix.
+ */
+function Sidebar({
+  title,
+  media,
+  collapsed,
+  onToggleCollapsed,
+  themeControl,
+  onClose,
+}: {
+  title: string
+  media: boolean
+  collapsed: boolean
+  onToggleCollapsed: () => void
+  themeControl?: ThemeControl
+  onClose: () => void
+}) {
   const path = usePath()
   const [first, second] = segments(path)
   const { resources, globals, user, signOut } = useAdmin()
 
-  type Entry = { key: string; label: string; to: string; active: boolean }
+  type Entry = { key: string; label: string; to: string; active: boolean; icon?: ReactNode }
   const groups = new Map<string, Entry[]>()
   const add = (group: string, entry: Entry) => groups.set(group, [...(groups.get(group) ?? []), entry])
   for (const resource of resources) {
@@ -172,6 +247,7 @@ function Sidebar({ title, media, onClose }: { title: string; media: boolean; onC
       label: resource.label,
       to: `/${resource.name}`,
       active: first === resource.name,
+      icon: resource.icon,
     })
   }
   for (const global of globals) {
@@ -180,48 +256,77 @@ function Sidebar({ title, media, onClose }: { title: string; media: boolean; onC
       label: global.label,
       to: `/globals/${global.name}`,
       active: first === 'globals' && second === global.name,
+      icon: global.icon,
     })
   }
+  const groupClass = cx('mt-4', collapsed && 'md:mt-2 md:border-t md:border-line md:pt-2')
 
   return (
     <div className="flex h-full flex-col">
-      <div className="flex h-14 items-center justify-between px-4">
-        <Link to="/" className="text-base font-semibold">
+      <div
+        className={cx('flex h-14 items-center justify-between gap-1 px-4', collapsed && 'md:justify-center md:px-0')}
+      >
+        <Link to="/" className={cx('truncate text-base font-semibold', collapsed && 'md:hidden')}>
           {title}
         </Link>
         <IconButton aria-label="Close menu" className="md:hidden" onClick={onClose}>
           <X className="size-4" />
         </IconButton>
+        <IconButton
+          aria-label={collapsed ? 'Expand menu' : 'Collapse menu'}
+          title={collapsed ? 'Expand menu' : 'Collapse menu'}
+          aria-expanded={!collapsed}
+          className="hidden md:inline-flex"
+          onClick={onToggleCollapsed}
+        >
+          {collapsed ? <PanelLeftOpen className="size-4" /> : <PanelLeftClose className="size-4" />}
+        </IconButton>
       </div>
 
-      <nav className="flex-1 overflow-y-auto px-2 pb-4" aria-label="Main">
-        <NavItem to="/" active={first === undefined} icon={<LayoutDashboard className="size-4" />}>
-          Dashboard
-        </NavItem>
+      <nav className={cx('flex-1 overflow-y-auto px-2 pb-4', collapsed && 'md:overflow-x-hidden')} aria-label="Main">
+        <NavItem
+          to="/"
+          label="Dashboard"
+          active={first === undefined}
+          collapsed={collapsed}
+          icon={<LayoutDashboard className="size-4" />}
+        />
         {[...groups.entries()].map(([group, items]) => (
-          <div key={group} className="mt-4">
-            {group && <p className="px-2.5 pb-1 text-xs font-medium text-muted">{group}</p>}
+          <div key={group} className={groupClass}>
+            {group && (
+              <p className={cx('px-2.5 pb-1 text-xs font-medium text-muted', collapsed && 'md:hidden')}>{group}</p>
+            )}
             {items.map((entry) => (
-              <NavItem key={entry.key} to={entry.to} active={entry.active}>
-                {entry.label}
-              </NavItem>
+              <NavItem
+                key={entry.key}
+                to={entry.to}
+                label={entry.label}
+                active={entry.active}
+                collapsed={collapsed}
+                icon={entry.icon}
+              />
             ))}
           </div>
         ))}
         {media && (
-          <div className="mt-4">
-            <NavItem to="/media" active={first === 'media'} icon={<ImageIcon className="size-4" />}>
-              Media
-            </NavItem>
+          <div className={groupClass}>
+            <NavItem
+              to="/media"
+              label="Media"
+              active={first === 'media'}
+              collapsed={collapsed}
+              icon={<ImageIcon className="size-4" />}
+            />
           </div>
         )}
       </nav>
 
-      <div className="flex items-center gap-2 border-t border-line p-3">
-        <div className="min-w-0 flex-1">
+      <div className={cx('flex items-center gap-1 border-t border-line p-3', collapsed && 'md:flex-col md:px-0')}>
+        <div className={cx('min-w-0 flex-1', collapsed && 'md:hidden')}>
           <p className="truncate text-sm font-medium">{user.fullName}</p>
           <p className="truncate text-xs text-muted">{user.email}</p>
         </div>
+        {themeControl && <ThemeSwitch {...themeControl} />}
         <IconButton aria-label="Sign out" title="Sign out" onClick={signOut}>
           <LogOut className="size-4" />
         </IconButton>
@@ -230,28 +335,51 @@ function Sidebar({ title, media, onClose }: { title: string; media: boolean; onC
   )
 }
 
+const THEME_LABELS: Record<ThemeChoice, string> = { system: 'System', light: 'Light', dark: 'Dark' }
+const NEXT_THEME: Record<ThemeChoice, ThemeChoice> = { system: 'light', light: 'dark', dark: 'system' }
+
+/** One button that cycles system → light → dark, so it also fits the collapsed menu. */
+function ThemeSwitch({ choice, onChange }: ThemeControl) {
+  const Icon = choice === 'light' ? Sun : choice === 'dark' ? Moon : Monitor
+  const label = `Theme: ${THEME_LABELS[choice]} (switch to ${THEME_LABELS[NEXT_THEME[choice]]})`
+  return (
+    <IconButton aria-label={label} title={label} onClick={() => onChange(NEXT_THEME[choice])}>
+      <Icon className="size-4" />
+    </IconButton>
+  )
+}
+
 function NavItem({
   to,
+  label,
   active,
+  collapsed,
   icon,
-  children,
 }: {
   to: string
+  label: string
   active: boolean
+  collapsed: boolean
   icon?: ReactNode
-  children: ReactNode
 }) {
   return (
     <Link
       to={to}
       aria-current={active ? 'page' : undefined}
+      title={collapsed ? label : undefined}
       className={cx(
         'flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-colors',
+        collapsed && 'md:justify-center md:px-0',
         active ? 'bg-subtle font-medium text-ink' : 'text-muted hover:bg-subtle/70 hover:text-ink',
       )}
     >
-      {icon}
-      {children}
+      {icon ??
+        (collapsed && (
+          <span aria-hidden className="hidden size-4 items-center justify-center text-xs font-semibold md:flex">
+            {label.charAt(0).toUpperCase()}
+          </span>
+        ))}
+      <span className={cx('truncate', collapsed && 'md:sr-only')}>{label}</span>
     </Link>
   )
 }
